@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0d">
+<title>NFL EDGE — Decisiones de fantasy</title>
+<style>
+:root{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#212120;
+  --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+  --line:#2c2c2a; --baseline:#383835;
+  --good:#0ca30c; --warning:#fab219; --critical:#d03b3b; --serious:#ec835a;
+  --blue:#3987e5; --blue-dim:#184f95; --aqua:#199e70; --violet:#9085e9;
+  --ring:rgba(255,255,255,.10);
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--page); color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.45;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+header{
+  position:sticky; top:0; z-index:30; background:rgba(13,13,13,.94);
+  backdrop-filter:blur(12px); border-bottom:1px solid var(--line);
+  padding:12px 14px 0;
+}
+.brand{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.brand h1{font-size:17px;margin:0;letter-spacing:-.01em}
+.brand .sub{font-size:11.5px;color:var(--muted)}
+.tabs{display:flex;gap:2px;overflow-x:auto;margin-top:10px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex:0 0 auto;padding:9px 13px;font-size:13px;font-weight:600;color:var(--muted);
+  background:none;border:0;border-bottom:2px solid transparent;cursor:pointer;
+  white-space:nowrap;
+}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--blue)}
+main{padding:14px 14px 60px;max-width:1100px;margin:0 auto}
+
+.filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+select,input[type=search],button.ghost{
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);
+  border-radius:9px;padding:8px 10px;font-size:13px;font-family:inherit;
+}
+input[type=search]{flex:1;min-width:150px}
+button.ghost{cursor:pointer}
+button.ghost:hover{background:var(--surface-2)}
+
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{
+  background:none;border:0;color:var(--muted);padding:8px 11px;font-size:12.5px;
+  font-weight:600;cursor:pointer;font-family:inherit;
+}
+.seg button[aria-pressed="true"]{background:var(--blue-dim);color:#fff}
+
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:var(--r);padding:13px;margin-bottom:10px}
+.note{font-size:12.5px;color:var(--ink-2);background:var(--surface);border:1px solid var(--ring);
+      border-left:3px solid var(--blue);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+
+/* ---------- semáforo: color + icono + etiqueta, nunca color solo ---------- */
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+      letter-spacing:.03em;padding:3px 8px;border-radius:999px;border:1px solid}
+.pill .ic{font-size:10px;line-height:1}
+.verde{color:var(--good);border-color:rgba(12,163,12,.45);background:rgba(12,163,12,.12)}
+.amarillo{color:var(--warning);border-color:rgba(250,178,25,.45);background:rgba(250,178,25,.12)}
+.conf{color:var(--ink-2);border-color:var(--baseline);background:var(--surface-2)}
+.rojo{color:var(--critical);border-color:rgba(208,59,59,.45);background:rgba(208,59,59,.12)}
+
+.prow{display:flex;gap:11px;align-items:flex-start}
+.score{
+  flex:0 0 52px;text-align:center;border-radius:11px;padding:7px 4px;
+  background:var(--surface-2);border:1px solid var(--ring);
+}
+.score b{display:block;font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums}
+.score span{font-size:9.5px;color:var(--muted);letter-spacing:.04em}
+.pmain{flex:1;min-width:0}
+.pname{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.pname strong{font-size:15px}
+.meta{font-size:12px;color:var(--muted);margin-top:1px}
+.insight{font-size:13px;color:var(--ink-2);margin-top:7px}
+.stats{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:7px;
+       font-variant-numeric:tabular-nums}
+.stats b{color:var(--ink-2);font-weight:600}
+.tag{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;
+     background:rgba(144,133,233,.16);color:var(--violet);border:1px solid rgba(144,133,233,.35)}
+.tag.herd{background:rgba(25,158,112,.16);color:var(--aqua);border-color:rgba(25,158,112,.35)}
+.star{flex:0 0 auto;background:none;border:0;color:var(--muted);font-size:19px;cursor:pointer;padding:2px 3px}
+.star.on{color:var(--warning)}
+
+/* ---------------------------- partidos ---------------------------- */
+.game{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.team{font-size:15px;font-weight:600}
+.teamrec{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{height:7px;border-radius:4px;background:var(--baseline);overflow:hidden;margin:9px 0 3px;display:flex}
+.bar i{display:block;height:100%}
+.bar i:first-child{background:var(--blue);border-radius:4px 0 0 4px}
+.bar i:last-child{background:var(--serious);border-radius:0 4px 4px 0;margin-left:2px}
+
+/* ---------------------------- heatmap ---------------------------- */
+.hmwrap{overflow-x:auto;border:1px solid var(--ring);border-radius:var(--r);background:var(--surface)}
+table.hm{border-collapse:separate;border-spacing:2px;font-size:11px;width:100%}
+table.hm th{color:var(--muted);font-weight:600;text-align:left;padding:5px 6px;
+            font-size:10px;white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:2}
+table.hm th.rowh{left:0;z-index:3;text-align:left}
+table.hm td{padding:0}
+table.hm td.rowh{position:sticky;left:0;background:var(--surface);color:var(--ink);
+                 font-weight:600;padding:5px 8px;z-index:1;font-size:11.5px}
+.cell{display:block;min-width:38px;padding:6px 4px;border-radius:4px;text-align:center;
+      color:#fff;font-variant-numeric:tabular-nums;font-weight:600;cursor:default}
+.legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin:9px 2px 0}
+.legend .sw{display:flex;gap:2px}
+.legend .sw i{width:17px;height:9px;border-radius:2px;display:block}
+
+.empty{color:var(--muted);font-size:13.5px;text-align:center;padding:26px 10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--ring);border-radius:11px;padding:10px}
+.kpi b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:10.5px;color:var(--muted)}
+details.acc{background:var(--surface);border:1px solid var(--ring);border-radius:11px;padding:10px 12px;margin-bottom:10px}
+details.acc summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-2)}
+details.acc div{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.55}
+code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:12px;word-break:break-all}
+a{color:var(--blue)}
+.tt{position:fixed;pointer-events:none;background:#000;border:1px solid var(--ring);
+    border-radius:8px;padding:7px 9px;font-size:11.5px;color:var(--ink-2);z-index:99;display:none;max-width:230px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>NFL EDGE</h1>
+    <span class="sub" id="hdrSub">cargando…</span>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-view="start" aria-selected="true">Start / Sit</button>
+    <button class="tab" role="tab" data-view="waivers" aria-selected="false">Waivers</button>
+    <button class="tab" role="tab" data-view="games" aria-selected="false">Partidos</button>
+    <button class="tab" role="tab" data-view="def" aria-selected="false">Defensas</button>
+    <button class="tab" role="tab" data-view="list" aria-selected="false">Mi lista</button>
+    <button class="tab" role="tab" data-view="about" aria-selected="false">Cómo funciona</button>
+  </div>
+</header>
+
+<main>
+  <div class="filters" id="filters"></div>
+  <div id="alerts"></div>
+  <div id="view"><div class="empty">Cargando datos…</div></div>
+</main>
+<div class="tt" id="tt"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const FMT_LABEL = {ppr:"PPR", half_ppr:"Half", standard:"Standard"};
+const POS = ["QB","RB","WR","TE"];
+const LIGHT_ICON = {verde:"▲", amarillo:"●", rojo:"▼"};
+
+const S = {
+  data:null, index:null, view:"start",
+  week:null, fmt:"half_ppr", pos:"ALL", team:"ALL", q:"",
+  watch:new Set(JSON.parse(localStorage.getItem("nfledge.watch")||"[]"))
+};
+
+const saveWatch = () =>
+  localStorage.setItem("nfledge.watch", JSON.stringify([...S.watch]));
+
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = (v,d=1) => (v==null||Number.isNaN(v)) ? "—" : Number(v).toFixed(d);
+
+/* ---------------- carga ---------------- */
+async function boot(){
+  try{
+    S.index = await (await fetch("data/index.json?"+Date.now())).json();
+    S.week = S.index.current;
+  }catch(e){ S.index = {weeks:[], current:null}; }
+  await loadWeek(S.week);
+}
+async function loadWeek(w){
+  const file = w ? `data/week_${w}.json` : "data/latest.json";
+  try{
+    S.data = await (await fetch(file+"?"+Date.now())).json();
+    S.week = S.data.meta.week;
+    if(S.data.meta.default_format) S.fmt = S.data.meta.default_format;
+  }catch(e){
+    $("#view").innerHTML = `<div class="empty">No pude cargar <code>${esc(file)}</code>.<br>
+      Si acabas de crear el repo, espera a que corra la primera actualización
+      (pestaña <b>Actions</b> en GitHub) o lánzala a mano con <b>Run workflow</b>.</div>`;
+    $("#hdrSub").textContent = "sin datos";
+    return;
+  }
+  render();
+}
+
+/* ---------------- utilidades de datos ---------------- */
+const F = p => p[S.fmt] || {};
+function players(){
+  let a = (S.data?.players||[]).filter(p => F(p).matchup_score != null);
+  if(S.pos !== "ALL") a = a.filter(p => p.pos === S.pos);
+  if(S.team !== "ALL") a = a.filter(p => p.team === S.team);
+  if(S.q){
+    const q = S.q.toLowerCase();
+    a = a.filter(p => (p.name||"").toLowerCase().includes(q) ||
+                      (p.team||"").toLowerCase().includes(q) ||
+                      (p.opp||"").toLowerCase().includes(q));
+  }
+  return a;
+}
+
+/* ---------------- filtros ---------------- */
+function renderFilters(){
+  const weeks = S.index?.weeks?.length ? S.index.weeks : [S.week];
+  const teams = [...new Set((S.data?.players||[]).map(p=>p.team))].filter(Boolean).sort();
+  const showPlayerFilters = ["start","waivers","list"].includes(S.view);
+  $("#filters").innerHTML = `
+    <select id="fWeek" aria-label="Semana">
+      ${weeks.map(w=>`<option value="${w}" ${w===S.week?"selected":""}>Semana ${w}</option>`).join("")}
+    </select>
+    ${showPlayerFilters ? `
+    <div class="seg" role="group" aria-label="Formato de puntuación">
+      ${Object.keys(FMT_LABEL).map(f=>
+        `<button data-fmt="${f}" aria-pressed="${S.fmt===f}">${FMT_LABEL[f]}</button>`).join("")}
+    </div>
+    <select id="fPos" aria-label="Posición">
+      <option value="ALL">Todas las posiciones</option>
+      ${POS.map(p=>`<option value="${p}" ${S.pos===p?"selected":""}>${p}</option>`).join("")}
+    </select>
+    <select id="fTeam" aria-label="Equipo">
+      <option value="ALL">Todos los equipos</option>
+      ${teams.map(t=>`<option value="${t}" ${S.team===t?"selected":""}>${t}</option>`).join("")}
+    </select>
+    <input type="search" id="fQ" placeholder="Buscar jugador…" value="${esc(S.q)}">` : ""}
+  `;
+  $("#fWeek").onchange = e => loadWeek(+e.target.value);
+  if(showPlayerFilters){
+    document.querySelectorAll("[data-fmt]").forEach(b =>
+      b.onclick = () => { S.fmt = b.dataset.fmt; render(); });
+    $("#fPos").onchange  = e => { S.pos = e.target.value; render(); };
+    $("#fTeam").onchange = e => { S.team = e.target.value; render(); };
+    $("#fQ").oninput = e => { S.q = e.target.value; renderView(); };
+  }
+}
+
+/* ---------------- alertas ---------------- */
+function renderAlerts(){
+  if(!["start","waivers"].includes(S.view)){ $("#alerts").innerHTML=""; return; }
+  const m = S.data.meta;
+  const greens = (S.data.players||[])
+    .filter(p => F(p).light === "verde")
+    .sort((a,b)=>F(b).start_score - F(a).start_score).slice(0,5);
+  const ch = S.data.changes || [];
+  let html = "";
+
+  if(m.data_confidence === "baja"){
+    html += `<div class="note"><b>Confianza de datos: baja.</b> Sólo hay
+      ${m.weeks_played} semana(s) jugada(s) de ${m.season}. Los rankings todavía
+      se apoyan en el prior de temporadas pasadas, ya regresado a la media.
+      Se vuelven confiables alrededor de la semana 5.</div>`;
+  }
+  if(greens.length){
+    html += `<div class="card"><div class="meta" style="margin-bottom:7px">
+      ★ MEJORES MATCHUPS VERDES — SEMANA ${m.week}</div>` +
+      greens.map(p=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0">
+        <span><b>${esc(p.name)}</b> <span class="meta">${esc(p.pos)} · ${esc(p.team)} vs ${esc(p.opp)}</span></span>
+        <span class="pill verde"><span class="ic">${LIGHT_ICON.verde}</span>${num(F(p).matchup_score,0)}</span>
+      </div>`).join("") + `</div>`;
+  }
+  if(ch.length){
+    html += `<div class="card"><div class="meta" style="margin-bottom:7px">
+      ⇄ CAMBIARON DE SEMÁFORO vs SEMANA ${m.week-1}</div>` +
+      ch.slice(0,8).map(c=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0">
+        <span><b>${esc(c.name)}</b> <span class="meta">${esc(c.pos)} · ${esc(c.team)} vs ${esc(c.opp)}</span></span>
+        <span><span class="pill ${c.from}"><span class="ic">${LIGHT_ICON[c.from]}</span>${c.from}</span>
+        <span class="meta"> → </span>
+        <span class="pill ${c.to}"><span class="ic">${LIGHT_ICON[c.to]}</span>${c.to}</span></span>
+      </div>`).join("") + `</div>`;
+  }
+  $("#alerts").innerHTML = html;
+}
+
+/* ---------------- tarjeta de jugador ---------------- */
+function playerCard(p, scoreKey, extra){
+  const f = F(p), on = S.watch.has(p.pid);
+  const badges = [];
+  if(p.before_the_herd) badges.push(`<span class="tag herd">ANTES DE LA MANADA</span>`);
+  if(p.status) badges.push(`<span class="tag">${esc(p.status).toUpperCase()}</span>`);
+  const val = scoreKey === "waiver_score" ? p.waiver_score : f[scoreKey];
+  return `<div class="card"><div class="prow">
+    <div class="score"><b>${num(val,0)}</b><span>${scoreKey==="waiver_score"?"WAIVER":"MATCHUP"}</span></div>
+    <div class="pmain">
+      <div class="pname">
+        <strong>${esc(p.name)}</strong>
+        <span class="pill ${f.light}"><span class="ic">${LIGHT_ICON[f.light]}</span>${esc(f.light)}</span>
+        ${badges.join("")}
+      </div>
+      <div class="meta">${esc(p.pos)} · ${esc(p.team)} ${p.is_home?"vs":"@"} ${esc(p.opp)}
+        ${p.implied_total!=null?` · total implícito ${num(p.implied_total)}`:""}</div>
+      <div class="insight">${esc(f.insight)}</div>
+      <div class="stats">
+        <span>PPJ <b>${num(f.fppg)}</b></span>
+        ${p.snap_pct!=null?`<span>snaps <b>${num(p.snap_pct,0)}%</b></span>`:""}
+        ${p.target_share?`<span>tgt share <b>${num(p.target_share*100,0)}%</b></span>`:""}
+        ${p.carry_share?`<span>acarreos <b>${num(p.carry_share*100,0)}%</b></span>`:""}
+        ${p.usage_trend!=null?`<span>tendencia <b>${p.usage_trend>=0?"+":""}${num(p.usage_trend*100,0)}%</b></span>`:""}
+        ${p.xfp_pg!=null?`<span>xFP/j <b>${num(p.xfp_pg)}</b></span>`:""}
+        ${extra||""}
+      </div>
+    </div>
+    <button class="star ${on?"on":""}" data-pid="${esc(p.pid)}"
+      aria-label="${on?"Quitar de mi lista":"Guardar en mi lista"}">${on?"★":"☆"}</button>
+  </div></div>`;
+}
+function bindStars(){
+  document.querySelectorAll(".star").forEach(b => b.onclick = () => {
+    const id = b.dataset.pid;
+    S.watch.has(id) ? S.watch.delete(id) : S.watch.add(id);
+    saveWatch(); renderView();
+  });
+}
+
+/* ---------------- vistas ---------------- */
+function viewStart(){
+  const a = players().sort((x,y)=>F(y).start_score - F(x).start_score);
+  if(!a.length) return `<div class="empty">Ningún jugador con esos filtros.</div>`;
+  const g = a.filter(p=>F(p).light==="verde").length;
+  return `<div class="kpis">
+      <div class="kpi"><b>${a.length}</b><span>jugadores</span></div>
+      <div class="kpi"><b style="color:var(--good)">${g}</b><span>en verde</span></div>
+      <div class="kpi"><b>${S.data.meta.week}</b><span>semana</span></div>
+      <div class="kpi"><b>${FMT_LABEL[S.fmt]}</b><span>formato</span></div>
+    </div>` + a.slice(0,120).map(p=>playerCard(p,"matchup_score")).join("");
+}
+
+function viewWaivers(){
+  const a = players()
+    .filter(p => (F(p).fppg||0) < 13 && (p.games||0) >= 1)
+    .sort((x,y)=>y.waiver_score - x.waiver_score);
+  if(!a.length) return `<div class="empty">Sin candidatos con esos filtros.</div>`;
+  const herd = a.filter(p=>p.before_the_herd).length;
+  const src = S.data.meta.sources.sleeper_trending;
+  return `<div class="kpis">
+      <div class="kpi"><b>${a.length}</b><span>candidatos</span></div>
+      <div class="kpi"><b style="color:var(--aqua)">${herd}</b><span>antes de la manada</span></div>
+      <div class="kpi"><b>${a.filter(p=>F(p).light==="verde").length}</b><span>en verde</span></div>
+    </div>
+    <div class="note">Se listan jugadores con producción baja (menos de 13 PPJ) y uso
+    en ascenso: los que probablemente sigan libres. <b>Antes de la manada</b> = su uso
+    real está subiendo pero todavía no está en tendencia en Sleeper.
+    ${src?"":"<br><b>Aviso:</b> la señal de mercado de Sleeper no estuvo disponible en esta corrida; el ranking usa sólo datos de uso."}</div>` +
+    a.slice(0,80).map(p=>playerCard(p,"waiver_score",
+      p.market_trend?`<span>mercado <b>${num(p.market_trend*100,0)}</b></span>`:"")).join("");
+}
+
+function viewGames(){
+  const gs = S.data.games||[];
+  if(!gs.length) return `<div class="empty">Sin partidos para esta semana.</div>`;
+  const bt = S.data.meta.backtest || {};
+  let head = "";
+  if(bt.available){
+    head = `<div class="note"><b>Qué tan bueno es este modelo (backtest real, ${esc(bt.seasons)}):</b>
+      acierta el ganador en <b>${bt.accuracy}%</b> de ${bt.n} partidos
+      ${bt.market_accuracy?`(el mercado de apuestas acierta ${bt.market_accuracy}%)`:""}.
+      Brier ${bt.brier}. Contra el spread: <b>${bt.ats_accuracy}%</b>.
+      Traducción honesta: es bueno prediciendo ganadores, y contra la línea
+      <b>no tiene ventaja demostrada</b>. Úsalo como información, no como consejo financiero.</div>`;
+  }
+  return head + gs.map(g=>{
+    const ph = Math.round((g.p_home||0)*100), pa = 100-ph;
+    const edge = g.edge;
+    const big = Math.abs(edge)>=6;
+    const edgeTxt = edge==null ? "" :
+      `<span class="pill ${big?"amarillo":"verde"}" title="${big
+        ?"Diferencia grande contra el mercado: normalmente significa que Vegas sabe algo que el modelo no (lesión, descanso, clima). Trátalo con escepticismo."
+        :"El modelo y el mercado concuerdan."}">
+       <span class="ic">${big?"!":"="}</span>
+       ${big?"discrepa":"concuerda"} ${edge>0?"+":""}${num(edge)} pts</span>`;
+    return `<div class="card">
+      <div class="game">
+        <div><div class="team">${esc(g.away_team)}</div>
+             <div class="teamrec">${esc(g.away_record)} · visitante</div></div>
+        <div style="text-align:right"><div class="team">${esc(g.home_team)}</div>
+             <div class="teamrec">${esc(g.home_record)} · local</div></div>
+      </div>
+      <div class="bar"><i style="width:${pa}%"></i><i style="width:${ph}%"></i></div>
+      <div class="game" style="font-size:11.5px;color:var(--muted)">
+        <span>${pa}%</span><span>${ph}%</span></div>
+      <div style="margin-top:9px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span class="pill conf">
+          <span class="ic">${g.confidence==="alta"?"●●●":g.confidence==="media"?"●●○":"●○○"}</span>
+          ${esc(g.favorite)} ${num(g.favorite_pct,0)}% · confianza ${esc(g.confidence)}</span>
+        ${edgeTxt}
+      </div>
+      <div class="insight">${esc(g.explanation)}</div>
+      <div class="stats">
+        <span>mi margen <b>${g.model_margin>0?"+":""}${num(g.model_margin)}</b></span>
+        <span>spread Vegas <b>${g.vegas_spread==null?"—":(g.vegas_spread>0?"+":"")+num(g.vegas_spread)}</b></span>
+        <span>total <b>${num(g.vegas_total)}</b></span>
+        <span>Elo <b>${num(g.elo_away,0)} / ${num(g.elo_home,0)}</b></span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* heatmap: escala DIVERGENTE (azul = defensa dura ↔ rojo = permisiva) */
+function divColor(rank){           // rank 1..32
+  const t = (rank-1)/31;           // 0 dura, 1 permisiva
+  const d = (t-0.5)*2;             // -1..1
+  if(Math.abs(d) < 0.06) return "#383835";
+  const stops = d<0
+    ? ["#383835","#1c5cab","#0d366b"]
+    : ["#383835","#b1332f","#7d1f1c"];
+  const k = Math.min(Math.abs(d)/1, 1), i = k<0.5?0:1, f = k<0.5?k*2:(k-0.5)*2;
+  const hx = h => [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+  const A = hx(stops[i]), B = hx(stops[i+1]);
+  const mix = A.map((v,j)=>Math.round(v+(B[j]-v)*f));
+  return `rgb(${mix.join(",")})`;
+}
+const HM_COLS = [
+  ["rb_rush_ypc","YPC a RB"],["rb_rush_ypg","Yds tierra RB"],["rb_expl_pg","Explosivas RB"],
+  ["rb_rec_ypt","Yds/obj a RB"],["rb_tgt_pg","Obj a RB"],
+  ["wr_short_ypt","WR corto"],["wr_deep_ypt","WR profundo"],["wr_tgt_pg","Obj a WR"],
+  ["te_rec_ypt","Yds/obj a TE"],["te_tgt_pg","Obj a TE"],
+  ["qb_rush_ypg","Corrida QB"],["pass_epa","EPA pase"],["rush_epa","EPA corrida"],
+  ["rz_td_rate","TD zona roja"],["plays_pg","Ritmo"]
+];
+function viewDef(){
+  const rows = (S.data.defense||[]).slice()
+    .sort((a,b)=>String(a.team).localeCompare(String(b.team)));
+  if(!rows.length) return `<div class="empty">Matriz defensiva no disponible.</div>`;
+  const labels = S.data.metric_labels||{};
+  const head = HM_COLS.map(([k,l])=>`<th title="${esc(labels[k]||k)}">${esc(l)}</th>`).join("");
+  const body = rows.map(r=>`<tr><td class="rowh">${esc(r.team)}</td>` +
+    HM_COLS.map(([k])=>{
+      const rk = r["rank_"+k];
+      if(rk==null) return `<td><span class="cell" style="background:#242422;color:var(--muted)">—</span></td>`;
+      return `<td><span class="cell" style="background:${divColor(rk)}"
+        data-tip="${esc(r.team)} — ${esc(labels[k]||k)}: ${rk}º de 32">${rk}</span></td>`;
+    }).join("") + `</tr>`).join("");
+  return `<div class="note">Ranking <b>1 = defensa más dura</b>, <b>32 = más permisiva</b>,
+    ya ajustado por la calidad de los rivales que enfrentó. Busca los rojos: ahí están
+    las ventajas. Toca una celda para ver el detalle.</div>
+    <div class="hmwrap"><table class="hm"><thead><tr><th class="rowh">Def</th>${head}</tr></thead>
+    <tbody>${body}</tbody></table></div>
+    <div class="legend"><span>Más dura</span>
+      <span class="sw">${[1,6,12,16,20,27,32].map(r=>`<i style="background:${divColor(r)}"></i>`).join("")}</span>
+      <span>Más permisiva</span></div>`;
+}
+
+function viewList(){
+  const a = (S.data.players||[]).filter(p=>S.watch.has(p.pid))
+    .sort((x,y)=>F(y).start_score - F(x).start_score);
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify([...S.watch]))));
+  const io = `<div class="card">
+      <div class="meta" style="margin-bottom:6px">PASAR MI LISTA A OTRO DISPOSITIVO</div>
+      <div class="stats" style="margin-top:0">Copia este código y pégalo en el otro navegador:</div>
+      <div style="margin:7px 0"><code id="wcode">${esc(code||"(vacía)")}</code></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="ghost" id="btnCopy">Copiar código</button>
+        <button class="ghost" id="btnPaste">Pegar código</button>
+        <button class="ghost" id="btnClear">Vaciar lista</button>
+      </div></div>`;
+  if(!a.length) return `<div class="empty">Tu lista está vacía.<br>
+    Toca la estrella ☆ de cualquier jugador para seguirlo aquí.</div>` + io;
+  return io + a.map(p=>playerCard(p,"matchup_score")).join("");
+}
+function bindList(){
+  const c = $("#btnCopy"); if(!c) return;
+  c.onclick = () => navigator.clipboard?.writeText($("#wcode").textContent)
+    .then(()=>c.textContent="✓ Copiado").catch(()=>c.textContent="Copia manual");
+  $("#btnPaste").onclick = () => {
+    const v = prompt("Pega aquí el código de tu lista:");
+    if(!v) return;
+    try{
+      JSON.parse(decodeURIComponent(escape(atob(v.trim())))).forEach(id=>S.watch.add(id));
+      saveWatch(); renderView();
+    }catch(e){ alert("Ese código no es válido."); }
+  };
+  $("#btnClear").onclick = () => {
+    if(confirm("¿Vaciar tu lista de jugadores?")){ S.watch.clear(); saveWatch(); renderView(); }
+  };
+}
+
+function viewAbout(){
+  const m = S.data.meta, s = m.sources||{}, bt = m.backtest||{};
+  const ok = b => b ? `<span style="color:var(--good)">● activa</span>`
+                    : `<span style="color:var(--warning)">● no disponible en esta corrida</span>`;
+  return `
+  <details class="acc" open><summary>Cómo se calcula el semáforo</summary><div>
+    Cada jugador se descompone en <b>canales de producción</b> (tierra, recepción
+    corta, recepción profunda, zona roja, pase) según su uso real. Después se mide
+    la permisividad del rival <b>en cada canal por separado</b> y se ponderan.
+    Por eso un RB puede tener matchup malo por tierra y bueno por el aire contra la
+    misma defensa: lo que importa es de qué canal viene su valor.<br><br>
+    Encima se aplican: total implícito de Vegas, ritmo del rival, guion de juego
+    (favorito/underdog), objetivos liberados por lesiones y clima.
+    El resultado se convierte a percentil <b>dentro de su posición</b>:
+    <b>verde ≥ 70</b>, amarillo 45-69, rojo &lt; 45.
+  </div></details>
+
+  <details class="acc"><summary>Por qué los rankings defensivos aquí son distintos</summary><div>
+    Una defensa que enfrentó a las mejores ofensivas se ve peor de lo que es.
+    Aquí se resuelve <code>valor = media + efecto_defensa + efecto_ofensa</code>
+    con regresión ridge, lo que separa el mérito de la defensa del de sus rivales.
+    Los rankings que ves ya están ajustados.
+  </div></details>
+
+  <details class="acc"><summary>Honestidad sobre las predicciones de partidos</summary><div>
+    ${bt.available ? `Backtest walk-forward sobre ${esc(bt.seasons)} (${bt.n} partidos):
+      acierta el ganador <b>${bt.accuracy}%</b> de las veces, contra
+      <b>${bt.market_accuracy}%</b> del mercado. Contra el spread: <b>${bt.ats_accuracy}%</b>,
+      que es esencialmente una moneda al aire.<br><br>
+      Es decir: el modelo predice ganadores bien, pero <b>no le gana a la línea de
+      Vegas</b>. Los mercados de NFL son muy eficientes. Esto es información para
+      decidir, no consejo financiero.` : "Backtest no disponible en esta corrida."}
+  </div></details>
+
+  <details class="acc"><summary>Fuentes de datos (todas gratuitas)</summary><div>
+    <b>nflverse</b> vía nflreadpy — play-by-play, stats semanales, snap counts,
+    rosters, lesiones, calendario y <b>líneas de Vegas</b>: ${ok(s.nflverse)}<br>
+    <b>Sleeper</b> — altas/bajas en tendencia 24h: ${ok(s.sleeper_trending)}<br>
+    <b>ESPN</b> — designaciones de lesión rápidas: ${ok(s.espn_injuries)}<br>
+    <b>Open-Meteo</b> — viento y lluvia por estadio: ${ok(s.weather)}<br><br>
+    Ninguna requiere llave de API ni pago.
+  </div></details>
+
+  <details class="acc"><summary>Estado de esta corrida</summary><div>
+    Temporada ${m.season}, semana ${m.week}.<br>
+    Semanas jugadas: ${m.weeks_played} · confianza de datos: <b>${esc(m.data_confidence)}</b>.<br>
+    Generado: ${esc(m.generated_at)} · tiempo de cómputo ${m.runtime_sec}s.<br>
+    ${m.calibration?`Modelo calibrado con ${m.calibration.n} partidos; localía estimada en
+      ${num(m.calibration.hfa,2)} puntos.`:""}
+  </div></details>
+
+  <div class="note">Se actualiza solo cada <b>martes y viernes a las 7:00 am (CDMX)</b>
+  con GitHub Actions. La corrida del martes ya incluye el Monday Night Football;
+  la del viernes recoge las correcciones de estadística de la NFL y el reporte
+  final de lesiones.</div>`;
+}
+
+/* ---------------- render ---------------- */
+function renderView(){
+  const v = {start:viewStart, waivers:viewWaivers, games:viewGames,
+             def:viewDef, list:viewList, about:viewAbout}[S.view];
+  $("#view").innerHTML = v();
+  bindStars(); bindList(); bindTips();
+}
+function render(){
+  const m = S.data.meta;
+  $("#hdrSub").textContent =
+    `${m.season} · semana ${m.week} · actualizado ${m.generated_at}`;
+  renderFilters(); renderAlerts(); renderView();
+}
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected","false"));
+  t.setAttribute("aria-selected","true");
+  S.view = t.dataset.view;
+  renderFilters(); renderAlerts(); renderView();
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+
+/* tooltip del heatmap */
+function bindTips(){
+  const tt = $("#tt");
+  document.querySelectorAll("[data-tip]").forEach(el=>{
+    const show = e => {
+      tt.textContent = el.dataset.tip; tt.style.display="block";
+      const x = (e.touches?e.touches[0].clientX:e.clientX);
+      const y = (e.touches?e.touches[0].clientY:e.clientY);
+      tt.style.left = Math.min(x+10, innerWidth-240)+"px";
+      tt.style.top  = Math.max(y-42, 6)+"px";
+    };
+    el.addEventListener("mouseenter",show);
+    el.addEventListener("mousemove",show);
+    el.addEventListener("touchstart",show,{passive:true});
+    el.addEventListener("mouseleave",()=>tt.style.display="none");
+    el.addEventListener("touchend",()=>setTimeout(()=>tt.style.display="none",1600));
+  });
+}
+boot();
+</script>
+</body>
+</html>
