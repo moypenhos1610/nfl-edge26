@@ -552,12 +552,17 @@ function viewGames(){
     de la línea cuando la diferencia supera <b>${rules.disagree_min_pts||4} puntos</b>
     <b>y</b> al menos <b>${rules.consensus_required||2}</b> de nuestras señales propias
     (Elo, EPA ajustada, descanso) apuntan al mismo lado. Si no, se manda con Vegas.
-    Esto no es timidez: es lo que dijo el experimento sobre 284 partidos.</div>`;
+    Esto no es timidez: es lo que dijo el experimento sobre 284 partidos.<br><br>
+    <b>Y cuando sí discrepa, léelo al revés.</b> Medido en 2025: los partidos donde el
+    modelo difiere fuerte del mercado fueron sus <b>peores</b> (57% de acierto contra
+    67% de Vegas). Mientras más seguro está de que Vegas se equivoca, peor le va.
+    Por eso una discrepancia aquí es <b>bandera roja</b>, no oportunidad — y por eso
+    no publicamos lados de spread como recomendación.</div>`;
   const STANCE = {
     coincide:        ["conf", "=", "coincide con Vegas"],
     discrepa_debil:  ["conf", "~", "difiere sin respaldo → se manda con Vegas"],
-    discrepa:        ["amarillo", "!", "discrepa CON respaldo"],
-    discrepa_fuerte: ["verde", "!!", "discrepancia FUERTE con respaldo"],
+    discrepa:        ["amarillo", "!", "el modelo difiere — cuidado"],
+    discrepa_fuerte: ["rojo", "!!", "difiere fuerte — bandera roja"],
     sin_linea:       ["conf", "?", "sin línea de mercado"],
   };
   return head + gs.map(g=>{

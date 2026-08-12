@@ -335,7 +335,8 @@ def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
         else:
             stance = ("discrepa_fuerte" if abs(gap) >= C.DISAGREE_STRONG_PTS
                       else "discrepa")
-            ats_pick = ((h if gap > 0 else a) if abs(gap) >= C.ATS_MIN_EDGE else None)
+            ats_pick = ((h if gap > 0 else a)
+                        if (C.SHOW_ATS_PICK and abs(gap) >= C.ATS_MIN_EDGE) else None)
 
         rh = rec.get(h, {"w": 0, "l": 0, "t": 0})
         ra = rec.get(a, {"w": 0, "l": 0, "t": 0})
@@ -372,8 +373,13 @@ STANCE_ES = {
     "coincide": "Coincide con el mercado.",
     "discrepa_debil": ("Diferencia con el mercado, pero SIN respaldo suficiente de "
                        "nuestras propias señales: se manda con Vegas."),
-    "discrepa": "Discrepamos del mercado y las señales propias lo respaldan.",
-    "discrepa_fuerte": "DISCREPANCIA FUERTE con el mercado, con respaldo múltiple.",
+    "discrepa": ("El modelo difiere del mercado y sus señales lo respaldan. "
+                 "AVISO: en 2025 estos casos los acertó 53% contra 57% del mercado."),
+    "discrepa_fuerte": ("El modelo difiere FUERTE del mercado. AVISO IMPORTANTE: "
+                        "en 2025 estos fueron sus PEORES partidos — 57% contra 67% "
+                        "del mercado. Cuanto más seguro está de que Vegas se "
+                        "equivoca, peor le va. Trátalo como bandera roja, no como "
+                        "oportunidad."),
     "sin_linea": "Sin línea de mercado disponible.",
 }
 
@@ -402,9 +408,7 @@ def _explain(h, a, fav, pfav, margin, spread, rh, ra, eh, ea, edge,
             sig = ", ".join(signals or []) or "señales internas"
             parts.append(f"Respaldo: {sig}. Se inclina hacia {lado}.")
             if ats_pick:
-                parts.append(f"Lado del spread señalado: {ats_pick} "
-                             f"(informativo — contra la línea el modelo mide 46-50% "
-                             f"histórico, sin ventaja demostrada).")
+                parts.append(f"Lado del spread señalado: {ats_pick} (informativo).")
         elif stance == "discrepa_debil":
             parts.append("Regla del modelo: sin al menos dos señales propias "
                          "coincidiendo, no se apuesta contra Vegas.")

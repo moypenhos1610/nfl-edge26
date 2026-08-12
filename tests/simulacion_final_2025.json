@@ -1,0 +1,258 @@
+{
+ "fantasy": {
+  "n": 3988,
+  "lights": {
+   "verde": {
+    "n": 1224,
+    "res": 0.586
+   },
+   "amarillo": {
+    "n": 1029,
+    "res": 0.082
+   },
+   "rojo": {
+    "n": 1735,
+    "res": -0.328
+   }
+  },
+  "gap": 0.914,
+  "t": 3.82,
+  "p": 0.0001374306985902688,
+  "rho": 0.058,
+  "by_pos": {
+   "QB": 2.29,
+   "RB": 1.81,
+   "WR": 0.03,
+   "TE": 0.82
+  },
+  "deciles": [
+   {
+    "lo": 0,
+    "n": 371,
+    "res": -0.32
+   },
+   {
+    "lo": 10,
+    "n": 393,
+    "res": -1.08
+   },
+   {
+    "lo": 20,
+    "n": 392,
+    "res": 0.36
+   },
+   {
+    "lo": 30,
+    "n": 384,
+    "res": -0.37
+   },
+   {
+    "lo": 40,
+    "n": 405,
+    "res": -0.09
+   },
+   {
+    "lo": 50,
+    "n": 417,
+    "res": 0.41
+   },
+   {
+    "lo": 60,
+    "n": 402,
+    "res": -0.2
+   },
+   {
+    "lo": 70,
+    "n": 393,
+    "res": 0.37
+   },
+   {
+    "lo": 80,
+    "n": 410,
+    "res": 0.56
+   },
+   {
+    "lo": 90,
+    "n": 398,
+    "res": 0.67
+   }
+  ]
+ },
+ "risk": {
+  "levels": {
+   "ninguno": {
+    "n": 3227,
+    "res": 0.24
+   },
+   "medio": {
+    "n": 741,
+    "res": -0.7
+   },
+   "alto": {
+    "n": 15,
+    "res": 0.02
+   }
+  },
+  "gap": 0.948,
+  "t": 3.59,
+  "p": 0.0003393953376940668
+ },
+ "games": {
+  "n": 271,
+  "acc": 64.6,
+  "vegas": 65.7,
+  "brier": 0.2153,
+  "brier_vegas": 0.2121,
+  "ats": 46.1,
+  "stance": {
+   "coincide": {
+    "n": 196,
+    "acc": 65.8,
+    "vegas": 66.3
+   },
+   "discrepa_debil": {
+    "n": 24,
+    "acc": 70.8,
+    "vegas": 70.8
+   },
+   "discrepa": {
+    "n": 30,
+    "acc": 56.7,
+    "vegas": 56.7
+   },
+   "discrepa_fuerte": {
+    "n": 21,
+    "acc": 57.1,
+    "vegas": 66.7
+   }
+  }
+ },
+ "by_week": [
+  {
+   "week": 1,
+   "n": 16,
+   "model": 81.2,
+   "vegas": 81.2,
+   "fantasy_gap": -0.67
+  },
+  {
+   "week": 2,
+   "n": 16,
+   "model": 68.8,
+   "vegas": 68.8,
+   "fantasy_gap": null
+  },
+  {
+   "week": 3,
+   "n": 16,
+   "model": 75.0,
+   "vegas": 75.0,
+   "fantasy_gap": null
+  },
+  {
+   "week": 4,
+   "n": 15,
+   "model": 60.0,
+   "vegas": 66.7,
+   "fantasy_gap": 1.47
+  },
+  {
+   "week": 5,
+   "n": 14,
+   "model": 28.6,
+   "vegas": 35.7,
+   "fantasy_gap": -0.65
+  },
+  {
+   "week": 6,
+   "n": 15,
+   "model": 73.3,
+   "vegas": 73.3,
+   "fantasy_gap": -0.52
+  },
+  {
+   "week": 7,
+   "n": 15,
+   "model": 73.3,
+   "vegas": 80.0,
+   "fantasy_gap": 0.9
+  },
+  {
+   "week": 8,
+   "n": 13,
+   "model": 84.6,
+   "vegas": 84.6,
+   "fantasy_gap": 2.04
+  },
+  {
+   "week": 9,
+   "n": 14,
+   "model": 57.1,
+   "vegas": 57.1,
+   "fantasy_gap": 2.89
+  },
+  {
+   "week": 10,
+   "n": 14,
+   "model": 64.3,
+   "vegas": 64.3,
+   "fantasy_gap": 0.84
+  },
+  {
+   "week": 11,
+   "n": 15,
+   "model": 73.3,
+   "vegas": 73.3,
+   "fantasy_gap": 0.15
+  },
+  {
+   "week": 12,
+   "n": 14,
+   "model": 71.4,
+   "vegas": 71.4,
+   "fantasy_gap": -0.26
+  },
+  {
+   "week": 13,
+   "n": 16,
+   "model": 56.2,
+   "vegas": 56.2,
+   "fantasy_gap": 0.36
+  },
+  {
+   "week": 14,
+   "n": 14,
+   "model": 50.0,
+   "vegas": 50.0,
+   "fantasy_gap": 3.64
+  },
+  {
+   "week": 15,
+   "n": 16,
+   "model": 62.5,
+   "vegas": 62.5,
+   "fantasy_gap": 0.76
+  },
+  {
+   "week": 16,
+   "n": 16,
+   "model": 62.5,
+   "vegas": 62.5,
+   "fantasy_gap": 0.53
+  },
+  {
+   "week": 17,
+   "n": 16,
+   "model": 56.2,
+   "vegas": 56.2,
+   "fantasy_gap": 0.98
+  },
+  {
+   "week": 18,
+   "n": 16,
+   "model": 62.5,
+   "vegas": 62.5,
+   "fantasy_gap": 1.71
+  }
+ ]
+}

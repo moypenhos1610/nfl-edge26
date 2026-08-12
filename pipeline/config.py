@@ -109,11 +109,23 @@ SLOT_ROUTING = False                # enrutar slot a métricas propias: no ayuda
 # 15 combinaciones probadas: ninguna le gana a Vegas. Coeficiente de nuestro
 # modelo junto al del mercado: -0.21 (negativo). Conclusión: anclarse al
 # mercado y separarse sólo cuando la evidencia propia sea abrumadora.
-MARKET_ANCHOR = 0.82        # 82% mercado, 18% modelo en el margen final
+MARKET_ANCHOR = 0.88        # 88% mercado, 12% modelo (subido tras medir 2025)
 DISAGREE_MIN_PTS = 4.0      # puntos de diferencia mínimos para siquiera hablar
 DISAGREE_STRONG_PTS = 6.5   # a partir de aquí la discrepancia es "fuerte"
 ATS_MIN_EDGE = 5.0          # no se marca lado del spread por debajo de esto
 CONSENSUS_REQUIRED = 2      # señales propias que deben coincidir para discrepar
+
+# MEDIDO sobre la temporada 2025 completa con el modelo ya anclado:
+#   coincide con Vegas (72% de los partidos): 65.8% de acierto
+#   discrepa con respaldo (11%):              53.3%  vs Vegas 56.7%
+#   discrepa FUERTE con respaldo (8%):        57.1%  vs Vegas 66.7%
+#   lados de spread señalados (36 casos):     41.7%
+# O sea: mientras MÁS seguro está el modelo de que Vegas se equivoca, PEOR le
+# va. Nuestra confianza al discrepar es anti-predictiva. Por eso no se publica
+# un lado de spread como recomendación: la discrepancia se muestra sólo como
+# aviso de "aquí el modelo y el mercado no se entienden, y el mercado suele
+# tener razón".
+SHOW_ATS_PICK = False
 
 # ------------------------------------------------------------------- rutas
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
