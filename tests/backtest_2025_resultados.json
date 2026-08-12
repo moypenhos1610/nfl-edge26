@@ -1,0 +1,180 @@
+{
+  "season": 2025,
+  "disagreement": {
+    "n": 38,
+    "model_wins_pct": 42.1
+  },
+  "games": {
+    "n": 271,
+    "model_acc": 63.5,
+    "vegas_acc": 65.7,
+    "brier": 0.2292,
+    "brier_vegas": 0.2121,
+    "ats": 46.1,
+    "by_week": [
+      {
+        "week": 1,
+        "n": 16,
+        "model": 62.5,
+        "vegas": 81.2
+      },
+      {
+        "week": 2,
+        "n": 16,
+        "model": 75.0,
+        "vegas": 68.8
+      },
+      {
+        "week": 3,
+        "n": 16,
+        "model": 75.0,
+        "vegas": 75.0
+      },
+      {
+        "week": 4,
+        "n": 15,
+        "model": 60.0,
+        "vegas": 66.7
+      },
+      {
+        "week": 5,
+        "n": 14,
+        "model": 28.6,
+        "vegas": 35.7
+      },
+      {
+        "week": 6,
+        "n": 15,
+        "model": 60.0,
+        "vegas": 73.3
+      },
+      {
+        "week": 7,
+        "n": 15,
+        "model": 66.7,
+        "vegas": 80.0
+      },
+      {
+        "week": 8,
+        "n": 13,
+        "model": 76.9,
+        "vegas": 84.6
+      },
+      {
+        "week": 9,
+        "n": 14,
+        "model": 71.4,
+        "vegas": 57.1
+      },
+      {
+        "week": 10,
+        "n": 14,
+        "model": 71.4,
+        "vegas": 64.3
+      },
+      {
+        "week": 11,
+        "n": 15,
+        "model": 73.3,
+        "vegas": 73.3
+      },
+      {
+        "week": 12,
+        "n": 14,
+        "model": 64.3,
+        "vegas": 71.4
+      },
+      {
+        "week": 13,
+        "n": 16,
+        "model": 56.2,
+        "vegas": 56.2
+      },
+      {
+        "week": 14,
+        "n": 14,
+        "model": 57.1,
+        "vegas": 50.0
+      },
+      {
+        "week": 15,
+        "n": 16,
+        "model": 87.5,
+        "vegas": 62.5
+      },
+      {
+        "week": 16,
+        "n": 16,
+        "model": 43.8,
+        "vegas": 62.5
+      },
+      {
+        "week": 17,
+        "n": 16,
+        "model": 50.0,
+        "vegas": 56.2
+      },
+      {
+        "week": 18,
+        "n": 16,
+        "model": 62.5,
+        "vegas": 62.5
+      }
+    ]
+  },
+  "fantasy": {
+    "n": 3988,
+    "by_light": [
+      {
+        "light": "verde",
+        "n": 1216,
+        "fp": 8.97,
+        "baseline": 8.42,
+        "residual": 0.54
+      },
+      {
+        "light": "amarillo",
+        "n": 1032,
+        "fp": 8.18,
+        "baseline": 8.12,
+        "residual": 0.07
+      },
+      {
+        "light": "rojo",
+        "n": 1740,
+        "fp": 7.39,
+        "baseline": 7.67,
+        "residual": -0.29
+      }
+    ],
+    "green_minus_red": 0.83,
+    "t_stat": 3.51,
+    "by_pos": [
+      {
+        "pos": "QB",
+        "gap": 2.48,
+        "n_green": 148,
+        "n_red": 199
+      },
+      {
+        "pos": "RB",
+        "gap": 1.6,
+        "n_green": 296,
+        "n_red": 499
+      },
+      {
+        "pos": "WR",
+        "gap": -0.14,
+        "n_green": 506,
+        "n_red": 684
+      },
+      {
+        "pos": "TE",
+        "gap": 0.93,
+        "n_green": 266,
+        "n_red": 358
+      }
+    ],
+    "spearman": 0.051
+  }
+}

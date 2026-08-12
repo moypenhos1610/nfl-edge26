@@ -41,15 +41,18 @@ def _positions(rosters: pl.DataFrame) -> pl.DataFrame:
             pl.col("week").cast(pl.Int32),
             pl.col("gsis_id").alias("pid"),
             pl.col("position").alias("pos_raw"),
+            pl.col("ngs_position").alias("ngs"),
         )
         .with_columns(
             pl.when(pl.col("pos_raw").is_in(["RB", "FB", "HB"])).then(pl.lit("RB"))
+            .when((pl.col("pos_raw") == "WR") & (pl.col("ngs") == "SLOT_WR"))
+            .then(pl.lit("SWR"))
             .when(pl.col("pos_raw") == "WR").then(pl.lit("WR"))
             .when(pl.col("pos_raw") == "TE").then(pl.lit("TE"))
             .when(pl.col("pos_raw") == "QB").then(pl.lit("QB"))
             .otherwise(pl.lit("OTHER")).alias("pos")
         )
-        .drop("pos_raw")
+        .drop(["pos_raw", "ngs"])
         .unique(subset=["season", "week", "pid"], keep="first")
     )
     return pos
@@ -146,7 +149,7 @@ def _game_level(ev: pl.DataFrame) -> pl.DataFrame:
 
         # ---- recepción por posición
         *[
-            e for pos in ("RB", "WR", "TE") for e in (
+            e for pos in ("RB", "WR", "TE", "SWR") for e in (
                 s(pl.when(pl.col("is_target") & (pl.col("rec_pos") == pos))
                   .then(1).otherwise(0)).alias(f"d_{pos.lower()}_tgt"),
                 s(pl.when(pl.col("is_target") & (pl.col("rec_pos") == pos) & (pl.col("comp") == 1))
@@ -215,6 +218,10 @@ METRICS: list[tuple[str, str, str | None, str]] = [
     ("te_rec_ypg",     "n_te_rec_yds",   None,               "yardas a TE por juego"),
     ("te_rec_td_pg",   "n_te_rec_td",    None,               "TDs a TE por juego"),
     ("te_short_ypt",   "n_te_short_yds", "d_te_short_tgt",   "yardas a TE en ruta corta"),
+
+    # receptores de slot (cobertura parcial en la fuente, se usa como refuerzo)
+    ("swr_rec_ypt",    "n_swr_rec_yds",  "d_swr_tgt",        "yardas por objetivo a WR de slot"),
+    ("swr_tgt_pg",     "d_swr_tgt",      None,               "objetivos a WR de slot por juego"),
 
     ("pass_epa",       "n_pass_epa",     "d_dropbacks",      "EPA por intento de pase permitido"),
     ("bomb_ypt",       "n_bomb_yds",     "d_bomb_tgt",       "yardas en pases de 20+ aéreas"),

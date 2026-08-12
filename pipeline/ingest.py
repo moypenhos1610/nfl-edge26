@@ -7,7 +7,6 @@ marca esa señal como no disponible en vez de romperse.
 from __future__ import annotations
 
 import json
-import os
 import time
 from typing import Any
 
@@ -80,9 +79,10 @@ def _safe_by_season(fn, seasons: list[int], label: str = "") -> pl.DataFrame:
 
 
 # ------------------------------------------------------------------ nflverse
-def load_nflverse(seasons: list[int]) -> dict[str, pl.DataFrame]:
+def load_nflverse(seasons: list[int], season: int | None = None) -> dict[str, pl.DataFrame]:
     """Carga todos los datasets de nflverse que necesita el modelo."""
     seasons = sorted({s for s in seasons if s >= 1999})
+    season = season or C.SEASON
     print(f"[nflverse] temporadas {seasons}")
 
     out: dict[str, pl.DataFrame] = {}
@@ -96,13 +96,17 @@ def load_nflverse(seasons: list[int]) -> dict[str, pl.DataFrame]:
     # Roster de temporada del año objetivo: en pretemporada `rosters_weekly`
     # todavía no existe, pero `rosters` ya trae las altas de agencia libre y el
     # draft. Sin esto asignaríamos a cada jugador su equipo del año pasado.
-    out["rosters_current"] = _safe(nfl.load_rosters, [C.SEASON], label="rosters_current")
+    out["rosters_current"] = _safe(nfl.load_rosters, [season], label="rosters_current")
+    # Separación promedio del receptor (Next Gen Stats). El backtest mostró que
+    # el semáforo funciona en receptores que separan y se invierte en los que no.
+    out["ngs_rec"] = _safe_by_season(
+        lambda ss: nfl.load_nextgen_stats(ss, "receiving"), seasons, label="ngs_receiving")
     out["teams"] = _safe(nfl.load_teams, label="teams")
 
     # El calendario incluye spread_line / total_line / moneyline: nuestra fuente
     # de mercado, gratis y ya dentro de nflverse. Cargamos historia larga porque
     # el Elo y el backtest del modelo de partidos la necesitan (pesa muy poco).
-    sched_seasons = sorted(set(seasons) | set(C.CALIBRATION_SEASONS) | {C.SEASON})
+    sched_seasons = sorted(set(seasons) | set(C.CALIBRATION_SEASONS) | {season})
     out["schedules"] = _safe_by_season(nfl.load_schedules, sched_seasons, label="schedules")
 
     for k, v in out.items():

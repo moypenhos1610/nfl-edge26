@@ -81,6 +81,40 @@ STADIUMS = {
 WIND_PENALTY_START = 12.0
 WIND_PENALTY_HARD = 20.0
 
+# ---------------------------------------------- reporte de lesiones (medido)
+# Hallazgo del backtest 2025: aparecer en el reporte de lesiones cuesta 0.92
+# puntos fantasy vs el propio promedio (t=3.48, p=0.0005) INCLUSO cuando el
+# jugador practicó completo. El efecto es mayor que toda la señal de matchup.
+PRACTICE_PENALTY = {
+    "Full Participation in Practice":    -0.45,
+    "Limited Participation in Practice": -0.62,
+    "Did Not Participate In Practice":   -0.78,
+}
+REPORT_PENALTY = {"Questionable": -0.30, "Doubtful": -1.20}
+
+# ------------------------------------------- confianza en receptores (medido)
+# HIPÓTESIS PROBADA Y DESCARTADA. La observación era real: en receptores que
+# separan poco la señal se invertía (-0.83 vs +0.28). Pero al aplicarlo como
+# encogimiento sobre TODA la población, el resultado EMPEORA:
+#     base +0.914 · sólo separación +0.867 · sólo slot +0.767 · ambas +0.795
+# Los t-stat originales (-1.45 y +1.62) nunca alcanzaron significancia: era
+# ruido con una explicación bonita. Se dejan apagados y el dato se muestra
+# solamente como contexto para el usuario, sin tocar el score.
+SEP_LOW, SEP_HIGH = 2.55, 3.00      # yardas de separación promedio (NGS)
+SEP_FACTOR_MIN = 1.0                # 1.0 = sin encogimiento (probado, no ayuda)
+SEP_CAUTION = 2.60                  # por debajo de esto sólo se AVISA
+SLOT_ROUTING = False                # enrutar slot a métricas propias: no ayuda
+
+# ------------------------------------------------- anclaje al mercado (medido)
+# 15 combinaciones probadas: ninguna le gana a Vegas. Coeficiente de nuestro
+# modelo junto al del mercado: -0.21 (negativo). Conclusión: anclarse al
+# mercado y separarse sólo cuando la evidencia propia sea abrumadora.
+MARKET_ANCHOR = 0.82        # 82% mercado, 18% modelo en el margen final
+DISAGREE_MIN_PTS = 4.0      # puntos de diferencia mínimos para siquiera hablar
+DISAGREE_STRONG_PTS = 6.5   # a partir de aquí la discrepancia es "fuerte"
+ATS_MIN_EDGE = 5.0          # no se marca lado del spread por debajo de esto
+CONSENSUS_REQUIRED = 2      # señales propias que deben coincidir para discrepar
+
 # ------------------------------------------------------------------- rutas
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_DIR = os.path.join(ROOT, ".cache")

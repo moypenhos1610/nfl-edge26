@@ -35,6 +35,27 @@ jugador contra la debilidad específica de la defensa rival.
 > `nfl_data_py` está **deprecado y archivado** desde septiembre de 2025. Este
 > proyecto usa `nflreadpy`, su sucesor oficial.
 
+## Lo que dice la evidencia (backtest 2025 completo, walk-forward)
+
+| Medición | Resultado |
+|---|---|
+| Semáforo de fantasy (brecha verde−rojo) | **+0.91 pts/partido**, t=3.82, p=0.00014 |
+| Por posición | QB +2.29 · RB +1.81 · TE +0.82 · **WR +0.03 (no funciona)** |
+| Ganadores de partido | modelo 63.5% vs **Vegas 65.7%** |
+| Contra el spread | 46-50% — **sin ventaja demostrada** |
+| Apilamiento mercado+modelo | coef. mercado **+1.10**, coef. modelo **−0.21** |
+| Aparecer en el reporte de lesiones | **−0.92 pts** vs el propio promedio, p=0.0005 |
+
+**Consecuencias de diseño, todas medidas:**
+
+- El margen de partido va **anclado al mercado en 82%**. Sólo nos separamos si la
+  diferencia supera 4 puntos *y* al menos 2 señales propias coinciden.
+- El **riesgo de lesión no entra al semáforo** — es una columna aparte. Mezclarlos
+  bajaba la brecha 0.03 pts (medido).
+- **Hipótesis descartadas:** enrutar receptores de slot a métricas propias (+0.914 →
+  +0.767) y encoger la señal por separación (+0.914 → +0.867). Ambas empeoran.
+  El código queda, apagado por configuración, con la medición documentada.
+
 ## Automatización
 
 GitHub Actions corre el pipeline y publica los resultados solo:

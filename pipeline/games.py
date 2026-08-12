@@ -228,6 +228,10 @@ def backtest(elo_hist: pl.DataFrame, sched: pl.DataFrame) -> dict:
 def _records(sched: pl.DataFrame, season: int, week: int) -> dict[str, dict]:
     """Récord de temporada regular ANTES de la semana objetivo."""
     rec: dict[str, dict] = {}
+    need = {"season", "week", "game_type", "home_score", "away_score",
+            "home_team", "away_team"}
+    if sched.height == 0 or not need.issubset(set(sched.columns)):
+        return rec
     d = sched.filter((pl.col("season") == season)
                      & (pl.col("week") < week)
                      & (pl.col("game_type") == "REG")
@@ -250,6 +254,9 @@ def _records(sched: pl.DataFrame, season: int, week: int) -> dict[str, dict]:
 def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
                  week: int) -> tuple[list[dict], dict]:
     """Predicciones de la semana con favorito, confianza y edge contra Vegas."""
+    if sched is None or sched.height == 0 or "season" not in sched.columns:
+        return [], {"calibration": calibrate(pl.DataFrame()),
+                    "backtest": {"available": False}}
     elo, hist = compute_elo(sched, before=(season, week))
     cal = calibrate(hist) if hist.height else calibrate(pl.DataFrame())
     bt = backtest(hist, sched) if hist.height else {"available": False}
@@ -278,12 +285,57 @@ def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
         if epa:
             margin = 0.62 * elo_margin + 0.38 * (epa_margin + cal["hfa"]) + rest_adj
 
+        # ---------------------------------------------- ANCLAJE AL MERCADO
+        # 15 combinaciones probadas contra la temporada 2025: ninguna le gana a
+        # Vegas, y el coeficiente de nuestro modelo junto al del mercado es
+        # NEGATIVO. Conclusión honesta: el mercado manda, y sólo nos separamos
+        # de él cuando nuestras señales propias coinciden entre sí y la
+        # diferencia es grande.
+        raw_margin = float(margin)
+        vs = g.get("spread_line")
+        consensus, signals = 0, []
+        if vs is not None:
+            diff = raw_margin - float(vs)
+            direction = 1 if diff > 0 else -1
+            # señal 1: Elo apunta al mismo lado
+            if (eh - ea) * direction > 40:
+                consensus += 1
+                signals.append("rating Elo")
+            # señal 2: EPA ajustada apunta al mismo lado
+            if epa and epa_margin * direction > 1.5:
+                consensus += 1
+                signals.append("EPA ajustada por rival")
+            # señal 3: descanso
+            if abs(rest_adj) > 0.4 and rest_adj * direction > 0:
+                consensus += 1
+                signals.append("días de descanso")
+
+            strong = (abs(diff) >= C.DISAGREE_MIN_PTS
+                      and consensus >= C.CONSENSUS_REQUIRED)
+            anchor = C.MARKET_ANCHOR if not strong else (C.MARKET_ANCHOR - 0.25)
+            margin = anchor * float(vs) + (1 - anchor) * raw_margin
+        else:
+            strong = False
+
         p_home = win_prob(margin, cal)
         p_mkt = devig_moneyline(g.get("home_moneyline"), g.get("away_moneyline"))
         edge = (p_home - p_mkt) if p_mkt is not None else None
 
         fav, pfav = (h, p_home) if p_home >= 0.5 else (a, 1 - p_home)
         conf = ("alta" if pfav >= 0.68 else "media" if pfav >= 0.58 else "baja")
+
+        # ---- postura frente al mercado, con reglas explícitas
+        gap = (raw_margin - float(vs)) if vs is not None else None
+        if gap is None:
+            stance, ats_pick = "sin_linea", None
+        elif abs(gap) < C.DISAGREE_MIN_PTS:
+            stance, ats_pick = "coincide", None
+        elif not strong:
+            stance, ats_pick = "discrepa_debil", None
+        else:
+            stance = ("discrepa_fuerte" if abs(gap) >= C.DISAGREE_STRONG_PTS
+                      else "discrepa")
+            ats_pick = ((h if gap > 0 else a) if abs(gap) >= C.ATS_MIN_EDGE else None)
 
         rh = rec.get(h, {"w": 0, "l": 0, "t": 0})
         ra = rec.get(a, {"w": 0, "l": 0, "t": 0})
@@ -296,6 +348,9 @@ def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
             "away_record": f"{ra['w']}-{ra['l']}" + (f"-{ra['t']}" if ra["t"] else ""),
             "elo_home": round(eh, 1), "elo_away": round(ea, 1),
             "model_margin": round(float(margin), 2),
+            "raw_margin": round(raw_margin, 2),
+            "stance": stance, "ats_pick": ats_pick,
+            "consensus": consensus, "consensus_signals": signals,
             "vegas_spread": g.get("spread_line"),
             "vegas_total": g.get("total_line"),
             "p_home": round(p_home, 4),
@@ -307,13 +362,24 @@ def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
                             if g.get("spread_line") is not None else None),
             "epa_off_home": round(eph["off"], 4), "epa_def_home": round(eph["def"], 4),
             "epa_off_away": round(epa_a["off"], 4), "epa_def_away": round(epa_a["def"], 4),
-            "explanation": _explain(h, a, fav, pfav, margin, g.get("spread_line"),
-                                    rh, ra, eh, ea, edge),
+            "explanation": _explain(h, a, fav, pfav, raw_margin, g.get("spread_line"),
+                                    rh, ra, eh, ea, edge, stance, signals, ats_pick),
         })
     return out, {"calibration": cal, "backtest": bt}
 
 
-def _explain(h, a, fav, pfav, margin, spread, rh, ra, eh, ea, edge) -> str:
+STANCE_ES = {
+    "coincide": "Coincide con el mercado.",
+    "discrepa_debil": ("Diferencia con el mercado, pero SIN respaldo suficiente de "
+                       "nuestras propias señales: se manda con Vegas."),
+    "discrepa": "Discrepamos del mercado y las señales propias lo respaldan.",
+    "discrepa_fuerte": "DISCREPANCIA FUERTE con el mercado, con respaldo múltiple.",
+    "sin_linea": "Sin línea de mercado disponible.",
+}
+
+
+def _explain(h, a, fav, pfav, margin, spread, rh, ra, eh, ea, edge,
+             stance="coincide", signals=None, ats_pick=None) -> str:
     parts = [f"{fav} favorito con {100*pfav:.0f}% de probabilidad."]
     elo_gap = abs(eh - ea)
     stronger = h if eh > ea else a
@@ -329,13 +395,17 @@ def _explain(h, a, fav, pfav, margin, spread, rh, ra, eh, ea, edge) -> str:
     if spread is not None:
         diff = margin - float(spread)
         lado = h if diff > 0 else a
-        if abs(diff) >= 2.0:
-            parts.append(f"Mi margen ({margin:+.1f}) difiere {abs(diff):.1f} puntos del "
-                         f"spread de Vegas ({spread:+.1f}): el modelo ve valor en {lado}.")
-        else:
-            parts.append(f"Mi margen ({margin:+.1f}) coincide con Vegas ({spread:+.1f}); "
-                         f"sin ventaja detectable.")
-    if edge is not None and abs(edge) >= 0.06:
-        parts.append(f"Diferencia contra la probabilidad del mercado: {100*edge:+.1f} puntos "
-                     f"porcentuales.")
+        parts.append(f"Margen bruto del modelo {margin:+.1f} vs spread de Vegas "
+                     f"{spread:+.1f} (diferencia {diff:+.1f}).")
+        parts.append(STANCE_ES.get(stance, ""))
+        if stance in ("discrepa", "discrepa_fuerte"):
+            sig = ", ".join(signals or []) or "señales internas"
+            parts.append(f"Respaldo: {sig}. Se inclina hacia {lado}.")
+            if ats_pick:
+                parts.append(f"Lado del spread señalado: {ats_pick} "
+                             f"(informativo — contra la línea el modelo mide 46-50% "
+                             f"histórico, sin ventaja demostrada).")
+        elif stance == "discrepa_debil":
+            parts.append("Regla del modelo: sin al menos dos señales propias "
+                         "coincidiendo, no se apuesta contra Vegas.")
     return " ".join(parts)

@@ -40,9 +40,14 @@ def target_week(sched: pl.DataFrame, season: int) -> int:
 
 
 def injury_map(inj: pl.DataFrame, season: int, week: int,
-               espn: dict[str, str], profiles: pl.DataFrame) -> dict[str, str]:
-    """gsis_id -> estatus. Combina el reporte oficial con la señal rápida de ESPN."""
-    out: dict[str, str] = {}
+               espn: dict[str, str], profiles: pl.DataFrame) -> dict[str, dict]:
+    """gsis_id -> {status, practice}.
+
+    Incluye la PARTICIPACIÓN EN PRÁCTICAS, no sólo la designación de partido.
+    Es el hallazgo más grande del backtest 2025: aparecer en el reporte cuesta
+    0.92 puntos fantasy (p=0.0005) aunque el jugador haya practicado completo.
+    """
+    out: dict[str, dict] = {}
     if inj.height and "gsis_id" in inj.columns:
         d = inj.filter((pl.col("season") == season) & (pl.col("week") == week))
         if d.height == 0:
@@ -50,16 +55,126 @@ def injury_map(inj: pl.DataFrame, season: int, week: int,
             if d.height:
                 d = d.filter(pl.col("week") == d["week"].max())
         for r in d.iter_rows(named=True):
-            if r.get("gsis_id") and r.get("report_status"):
-                out[r["gsis_id"]] = str(r["report_status"])
+            pid = r.get("gsis_id")
+            if not pid:
+                continue
+            e = out.setdefault(pid, {"status": "", "practice": ""})
+            if r.get("report_status"):
+                e["status"] = str(r["report_status"])
+            if r.get("practice_status"):
+                e["practice"] = str(r["practice_status"])
     # ESPN por nombre, sólo para rellenar lo que falte
     if espn and profiles.height:
         by_name = {r["name"]: r["pid"] for r in
                    profiles.select(["name", "pid"]).to_dicts() if r.get("name")}
         for name, status in espn.items():
             pid = by_name.get(name)
-            if pid and pid not in out and status in ("Out", "Doubtful", "Questionable", "IR"):
-                out[pid] = status
+            if pid and status in ("Out", "Doubtful", "Questionable", "IR"):
+                e = out.setdefault(pid, {"status": "", "practice": ""})
+                if not e["status"]:
+                    e["status"] = status
+    return out
+
+
+def _relevant(p: dict, blk: dict | None = None) -> bool:
+    """¿Es un jugador sobre el que alguien tomaría una decisión?
+
+    Filtra suplentes profundos: sin esto, el historial y las alertas se llenan
+    de jugadores con 2 snaps cuyo resultado es puro ruido.
+    """
+    blk = blk or {}
+    return ((blk.get("fppg") or 0) >= 4.0
+            or (p.get("snap_pct") or 0) >= 40.0
+            or (p.get("target_share") or 0) >= 0.10
+            or (p.get("carry_share") or 0) >= 0.12)
+
+
+def build_track_record(season: int, sched: pl.DataFrame,
+                       pg: pl.DataFrame) -> dict:
+    """Historial REAL de aciertos, calificando lo que ya publicamos.
+
+    No es una simulación: lee los JSON de semanas anteriores (las predicciones
+    tal como se publicaron ese martes) y las califica contra lo que pasó.
+    """
+    res = {r["game_id"]: (r["home_score"], r["away_score"])
+           for r in sched.filter((pl.col("season") == season)
+                                 & pl.col("home_score").is_not_null())
+           .iter_rows(named=True)}
+    real_pts: dict[tuple[int, str], dict] = {}
+    if pg is not None and pg.height:
+        for r in pg.filter(pl.col("season") == season).to_dicts():
+            real_pts[(int(r["week"]), r["pid"])] = r
+
+    g_tot = g_ok = v_tot = v_ok = ats_tot = ats_ok = 0
+    weeks: list[dict] = []
+    lights: dict[str, dict] = {}
+
+    for fn in sorted(os.listdir(C.DATA_DIR)):
+        if not (fn.startswith("week_") and fn.endswith(".json")):
+            continue
+        try:
+            with open(os.path.join(C.DATA_DIR, fn), encoding="utf-8") as f:
+                snap = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+        if snap.get("meta", {}).get("season") != season:
+            continue
+        wk = snap["meta"]["week"]
+        wg_ok = wg_tot = 0
+        for gm in snap.get("games", []):
+            a = res.get(gm.get("game_id"))
+            if not a or a[0] == a[1]:
+                continue
+            home_won = a[0] > a[1]
+            g_tot += 1
+            wg_tot += 1
+            if (gm.get("p_home") or 0) > 0.5 and home_won or \
+               (gm.get("p_home") or 0) <= 0.5 and not home_won:
+                g_ok += 1
+                wg_ok += 1
+            pm = gm.get("p_market_home")
+            if pm is not None:
+                v_tot += 1
+                if (pm > 0.5) == home_won:
+                    v_ok += 1
+            sp, rm = gm.get("vegas_spread"), gm.get("raw_margin")
+            if sp is not None and rm is not None and gm.get("ats_pick"):
+                ats_tot += 1
+                if (rm > sp) == ((a[0] - a[1]) > sp):
+                    ats_ok += 1
+        if wg_tot:
+            weeks.append({"week": wk, "n": wg_tot,
+                          "acc": round(100 * wg_ok / wg_tot, 1)})
+
+        fmt = snap["meta"].get("default_format", C.DEFAULT_FORMAT)
+        for p in snap.get("players", []):
+            blk = p.get(fmt) or {}
+            lg = blk.get("light")
+            rp = real_pts.get((wk, p.get("pid")))
+            if not lg or rp is None or (p.get("games") or 0) < 3:
+                continue
+            # sólo jugadores con rol real: calificar suplentes de 2 snaps
+            # llena el historial de ruido y no refleja ninguna decisión tuya
+            if not _relevant(p, blk):
+                continue
+            from . import players as _pl
+            actual = _pl.fantasy_points(rp, fmt)
+            base = blk.get("fppg") or 0.0
+            e = lights.setdefault(lg, {"n": 0, "sum": 0.0})
+            e["n"] += 1
+            e["sum"] += actual - base
+
+    out = {"available": g_tot > 0, "games": {}, "fantasy": {}, "by_week": weeks}
+    if g_tot:
+        out["games"] = {
+            "n": g_tot, "acc": round(100 * g_ok / g_tot, 1),
+            "vegas_acc": (round(100 * v_ok / v_tot, 1) if v_tot else None),
+            "ats_n": ats_tot,
+            "ats_acc": (round(100 * ats_ok / ats_tot, 1) if ats_tot else None),
+        }
+    if lights:
+        out["fantasy"] = {k: {"n": v["n"], "vs_promedio": round(v["sum"] / v["n"], 2)}
+                          for k, v in lights.items() if v["n"]}
     return out
 
 
@@ -68,7 +183,7 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
     print(f"\n{'='*62}\nNFL EDGE {season} — corrida {C.stamp()}\n{'='*62}")
 
     seasons = sorted({season, *C.PRIOR_SEASONS})
-    nv = ingest.load_nflverse(seasons)
+    nv = ingest.load_nflverse(seasons, season=season)
     sched = nv["schedules"]
     if sched.height == 0:
         raise SystemExit("No se pudo cargar el calendario; se aborta la corrida.")
@@ -94,7 +209,8 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
 
     print("[motor] perfiles de jugador…")
     prof = players.build_profiles(ev, nv["rosters"], nv["snaps"], nv["ffopp"], season,
-                                  current_roster=nv.get("rosters_current"))
+                                  current_roster=nv.get("rosters_current"),
+                                  ngs=nv.get("ngs_rec"))
     print(f"  {prof.height} jugadores de posición fantasy")
 
     inj = injury_map(nv["injuries"], season, wk, espn_inj, prof)
@@ -127,7 +243,9 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
                                   "game_id", "gameday", "status", "snap_pct",
                                   "target_share", "carry_share", "wopr", "usage_trend",
                                   "xfp_pg", "fp_over_xfp", "games", "opportunities_pg",
-                                  "implied_total", "spread_own", "confidence")
+                                  "implied_total", "spread_own", "confidence",
+                                  "practice", "separation", "sep_factor", "is_slot",
+                                  "risk_level", "risk_txt", "risk_pen")
             })
             e["sleeper_id"] = sleeper_ids.get(r["pid"])
             e[fmt] = {
@@ -164,7 +282,7 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
                     continue
                 old = (p.get(base_fmt) or {}).get("light")
                 new = u[base_fmt]["light"]
-                if old and new and old != new:
+                if old and new and old != new and _relevant(u, u[base_fmt]):
                     changes.append({
                         "pid": u["pid"], "name": u["name"], "pos": u["pos"],
                         "team": u["team"], "opp": u["opp"], "from": old, "to": new,
@@ -175,6 +293,15 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
             changes.sort(key=lambda c: -abs(c["delta"]))
         except (json.JSONDecodeError, OSError, TypeError):
             pass
+
+    print("[motor] historial real de aciertos…")
+    pg_all = players.player_game_usage(ev) if ev is not None and ev.height else pl.DataFrame()
+    track = build_track_record(season, sched, pg_all)
+    if track.get("available"):
+        print(f"  {track['games']['n']} partidos calificados · "
+              f"modelo {track['games']['acc']}% · Vegas {track['games']['vegas_acc']}%")
+    else:
+        print("  aún sin semanas anteriores que calificar")
 
     payload = {
         "meta": {
@@ -192,6 +319,14 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
                 "weather": len(weather) > 0,
             },
             "backtest": gmeta["backtest"],
+            "track_record": _clean(track),
+            "market_rules": {
+                "anchor": C.MARKET_ANCHOR,
+                "disagree_min_pts": C.DISAGREE_MIN_PTS,
+                "disagree_strong_pts": C.DISAGREE_STRONG_PTS,
+                "ats_min_edge": C.ATS_MIN_EDGE,
+                "consensus_required": C.CONSENSUS_REQUIRED,
+            },
             "calibration": _clean(gmeta["calibration"]),
             "runtime_sec": round(time.time() - t0, 1),
         },

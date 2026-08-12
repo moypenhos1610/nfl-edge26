@@ -20,24 +20,28 @@ CHANNEL_METRICS: dict[str, dict[str, list[tuple[str, float]]]] = {
     "rush": {
         "RB": [("rb_rush_ypc", 0.50), ("rb_rush_ypg", 0.25), ("rb_expl_pg", 0.15),
                ("rush_epa", 0.10)],
+        "SWR": [("rush_epa", 1.00)],
         "QB": [("qb_rush_ypc", 0.45), ("qb_rush_ypg", 0.40), ("rush_epa", 0.15)],
         "WR": [("rush_epa", 1.00)],
         "TE": [("rush_epa", 1.00)],
     },
     "rec_short": {
         "RB": [("rb_rec_ypt", 0.40), ("rb_tgt_pg", 0.30), ("rb_rec_ypr", 0.30)],
+        "SWR": [("swr_rec_ypt", 0.45), ("swr_tgt_pg", 0.25), ("wr_short_ypt", 0.30)],
         "WR": [("wr_short_ypt", 0.50), ("wr_yac_pr", 0.25), ("wr_tgt_pg", 0.25)],
         "TE": [("te_short_ypt", 0.45), ("te_tgt_pg", 0.35), ("te_rec_ypt", 0.20)],
         "QB": [("pass_epa", 1.00)],
     },
     "rec_deep": {
         "RB": [("rb_rec_ypt", 0.60), ("pass_epa", 0.40)],
+        "SWR": [("swr_rec_ypt", 0.40), ("wr_deep_ypt", 0.35), ("pass_epa", 0.25)],
         "WR": [("wr_deep_ypt", 0.55), ("bomb_ypt", 0.30), ("pass_epa", 0.15)],
         "TE": [("te_rec_ypt", 0.55), ("bomb_ypt", 0.25), ("pass_epa", 0.20)],
         "QB": [("bomb_ypt", 0.60), ("pass_epa", 0.40)],
     },
     "redzone": {
         "RB": [("rz_td_rate", 0.45), ("rb_rush_td_pg", 0.35), ("rb_rec_td_pg", 0.20)],
+        "SWR": [("rz_td_rate", 0.45), ("wr_rec_td_pg", 0.55)],
         "WR": [("rz_td_rate", 0.45), ("wr_rec_td_pg", 0.55)],
         "TE": [("rz_td_rate", 0.45), ("te_rec_td_pg", 0.55)],
         "QB": [("rz_td_rate", 1.00)],
@@ -45,6 +49,7 @@ CHANNEL_METRICS: dict[str, dict[str, list[tuple[str, float]]]] = {
     "pass": {
         "QB": [("pass_epa", 0.55), ("wr_rec_ypt", 0.25), ("bomb_ypt", 0.20)],
         "RB": [("pass_epa", 1.0)], "WR": [("pass_epa", 1.0)], "TE": [("pass_epa", 1.0)],
+        "SWR": [("pass_epa", 1.0)],
     },
 }
 
@@ -99,6 +104,20 @@ def channel_weakness(matrix_row: dict, channel: str, pos: str
     if total_w <= 0:
         return 0.0, detail
     return acc / total_w, detail
+
+
+def separation_factor(sep: float | None, pos: str) -> float:
+    """Cuánta señal de matchup conservamos para este receptor.
+
+    Medido en el backtest 2025: en receptores que separan poco la señal se
+    INVIERTE (-0.83) y en los que separan bien funciona (+0.28). Donde el dato
+    no es confiable, encogemos la señal hacia cero en vez de fingir certeza.
+    """
+    if pos not in ("WR", "TE") or sep is None:
+        return 1.0
+    t = (float(sep) - C.SEP_LOW) / max(C.SEP_HIGH - C.SEP_LOW, 1e-6)
+    t = min(max(t, 0.0), 1.0)
+    return C.SEP_FACTOR_MIN + (1.0 - C.SEP_FACTOR_MIN) * t
 
 
 def _pct_to_score(values: np.ndarray) -> np.ndarray:
@@ -241,12 +260,17 @@ def compute(profiles: pl.DataFrame, matrix: pl.DataFrame, week_games: list[dict]
         if not chw or sum(chw.values()) <= 0:
             continue
 
+        # los receptores de slot enfrentan defensores distintos: se enrutan a
+        # las métricas "vs slot" cuando la fuente los identifica como tales
+        mpos = ("SWR" if (C.SLOT_ROUTING and pos == "WR" and r.get("is_slot"))
+                else pos)
+
         contribs: list[tuple[str, float, float, list]] = []
         raw = 0.0
         for ch, w in chw.items():
             if w <= 0.005:
                 continue
-            zc, detail = channel_weakness(mrow, ch, pos)
+            zc, detail = channel_weakness(mrow, ch, mpos)
             contribs.append((ch, w, w * zc, detail))
             raw += w * zc
 
@@ -285,29 +309,75 @@ def compute(profiles: pl.DataFrame, matrix: pl.DataFrame, week_games: list[dict]
                 wx_adj -= 0.12
                 flags.append("Se pronostica lluvia.")
 
-        status = injuries.get(r["pid"], "")
+        # ---- reporte de lesiones: el hallazgo más grande del backtest
+        rec_inj = injuries.get(r["pid"], "")
+        if isinstance(rec_inj, dict):
+            status = rec_inj.get("status") or ""
+            practice = rec_inj.get("practice") or ""
+        else:
+            status, practice = (rec_inj or ""), ""
+
         inj_pen = 0.0
         if status in ("Out", "IR"):
             inj_pen = -99.0
             flags.append("FUERA del partido según el reporte oficial.")
-        elif status == "Doubtful":
-            inj_pen = -1.2
-            flags.append("Dudoso: riesgo alto de no jugar.")
-        elif status == "Questionable":
-            inj_pen = -0.35
-            flags.append("Cuestionable: confírmalo antes del kickoff.")
+        else:
+            inj_pen += C.REPORT_PENALTY.get(status, 0.0)
+            inj_pen += C.PRACTICE_PENALTY.get(practice, 0.0)
+            if status == "Doubtful":
+                flags.append("Dudoso: riesgo alto de no jugar.")
+            elif status == "Questionable":
+                flags.append("Cuestionable: confírmalo antes del kickoff.")
+            if practice:
+                corta = {"Full Participation in Practice": "practicó completo",
+                         "Limited Participation in Practice": "práctica limitada",
+                         "Did Not Participate In Practice": "no practicó"}.get(
+                             practice, practice)
+                flags.append(f"Aparece en el reporte de lesiones ({corta}). "
+                             f"Medido en 2025: los jugadores en el reporte rinden "
+                             f"0.9 puntos por debajo de su promedio, incluso "
+                             f"practicando completo.")
 
-        score_raw = (raw + W_ENV * env_z + W_PACE * pace_z + W_SCRIPT * script
-                     + W_VACATED * vac + wx_adj + inj_pen)
+        # ---- confianza según separación (sólo receptores)
+        sep = r.get("separation")
+        sep_f = separation_factor(sep, pos)
+        if (sep is not None and pos in ("WR", "TE")
+                and float(sep) < C.SEP_CAUTION):
+            flags.append(f"Ojo: separación promedio de {float(sep):.1f} yardas, "
+                         f"de las más bajas de la liga. Suele significar que se "
+                         f"lleva al mejor esquinero encima, y ahí el promedio "
+                         f"defensivo del equipo es menos confiable.")
+
+        # IMPORTANTE: el riesgo por lesión NO entra en el score de matchup.
+        # El semáforo responde "¿qué tan bueno es el rival para él?"; la salud
+        # es una pregunta distinta y se reporta aparte. Mezclarlas ensuciaba
+        # ambas señales (medido: la brecha verde-rojo caía 0.03 al mezclarlas).
+        score_raw = (raw * sep_f + W_ENV * env_z + W_PACE * pace_z + W_SCRIPT * script
+                     + W_VACATED * vac + wx_adj)
+
+        if inj_pen <= -90:
+            risk_level, risk_txt = "fuera", "Fuera del partido"
+        elif inj_pen <= -0.95:
+            risk_level, risk_txt = "alto", "Riesgo alto"
+        elif inj_pen <= -0.40:
+            risk_level, risk_txt = "medio", "En el reporte de lesiones"
+        elif inj_pen < 0:
+            risk_level, risk_txt = "bajo", "Mención en el reporte"
+        else:
+            risk_level, risk_txt = "ninguno", "Sano"
 
         out.append({
             "pid": r["pid"], "name": r["name"], "pos": pos, "team": team,
             "opp": c["opp"], "is_home": c["is_home"], "game_id": c["game_id"],
             "gameday": c["gameday"],
             "raw": float(score_raw), "matchup_raw": float(raw),
+            "risk_pen": float(max(inj_pen, -3.0)), "risk_level": risk_level,
+            "risk_txt": risk_txt,
             "env_z": float(env_z), "pace_z": float(pace_z),
             "implied_total": c["implied_total"], "spread_own": c["spread_own"],
-            "status": status or "",
+            "status": status or "", "practice": practice or "",
+            "separation": (float(sep) if sep is not None else None),
+            "sep_factor": round(sep_f, 3), "is_slot": bool(r.get("is_slot")),
             "channels": {k: round(v, 3) for k, v in chw.items()},
             "_contribs": contribs, "_flags": flags,
             "fppg": r.get(f"fppg_{fmt}"), "snap_pct": r.get("snap_pct"),
@@ -338,11 +408,13 @@ def compute(profiles: pl.DataFrame, matrix: pl.DataFrame, week_games: list[dict]
         for i, s in enumerate(sub):
             s["matchup_score"] = round(float(pct[i]), 1)
             s["quality_score"] = round(float(qpct[i]), 1)
-            s["start_score"] = round(float(0.55 * qpct[i] + 0.45 * pct[i]), 1)
+            # el ranking de alineación SÍ descuenta el riesgo de lesión
+            risk_hit = 0.0 if s["risk_pen"] <= -90 else abs(s["risk_pen"]) * 14.0
+            s["start_score"] = round(
+                float(max(0.0, 0.55 * qpct[i] + 0.45 * pct[i] - risk_hit)), 1)
             s["light"] = light(s["matchup_score"])
             if s["status"] in ("Out", "IR"):
-                s["light"] = "rojo"
-                s["matchup_score"] = 0.0
+                s["start_score"] = 0.0
             s["insight"] = build_insight(
                 s["name"], s["pos"], s["opp"], s["channels"], s["_contribs"],
                 {"implied_total": s["implied_total"], "spread_own": s["spread_own"]},

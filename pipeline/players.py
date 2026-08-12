@@ -154,9 +154,33 @@ def attach_snaps(profiles: pl.DataFrame, snaps: pl.DataFrame,
     return profiles.join(recent, on="pid", how="left")
 
 
+def attach_separation(prof: pl.DataFrame, ngs: pl.DataFrame,
+                      season: int) -> pl.DataFrame:
+    """Separación promedio del receptor (Next Gen Stats).
+
+    No es un dato de matchup: es un dato de CONFIANZA. Los receptores que no
+    separan son los que se llevan al esquinero estrella encima, y ahí el
+    promedio defensivo del equipo miente.
+    """
+    if prof.height == 0 or ngs is None or ngs.height == 0:
+        return prof.with_columns(pl.lit(None, dtype=pl.Float64).alias("separation"))
+    idc = next((c for c in ("player_gsis_id", "player_id", "gsis_id")
+                if c in ngs.columns), None)
+    if idc is None or "avg_separation" not in ngs.columns:
+        return prof.with_columns(pl.lit(None, dtype=pl.Float64).alias("separation"))
+    d = ngs.with_columns(pl.col("season").cast(pl.Int32, strict=False))
+    tgt = season if d.filter(pl.col("season") == season).height else d["season"].max()
+    agg = (d.filter(pl.col("season") == tgt)
+           .group_by(idc)
+           .agg(pl.col("avg_separation").cast(pl.Float64).mean().alias("separation"))
+           .rename({idc: "pid"}))
+    return prof.join(agg, on="pid", how="left")
+
+
 def build_profiles(ev: pl.DataFrame, rosters: pl.DataFrame, snaps: pl.DataFrame,
                    ffopp: pl.DataFrame, season: int,
-                   current_roster: pl.DataFrame | None = None) -> pl.DataFrame:
+                   current_roster: pl.DataFrame | None = None,
+                   ngs: pl.DataFrame | None = None) -> pl.DataFrame:
     """Perfil agregado por jugador para la temporada objetivo (con prior)."""
     pg = player_game_usage(ev)
     if pg.height == 0:
@@ -228,6 +252,16 @@ def build_profiles(ev: pl.DataFrame, rosters: pl.DataFrame, snaps: pl.DataFrame,
         print(f"  roster {season}: {agg.height} activos "
               f"({n_before - agg.height} descartados por no estar en la liga)")
 
+    # marca de receptor de slot (viene del roster, fuente Next Gen Stats)
+    if "ngs_position" in rosters.columns:
+        slot = (rosters.filter(pl.col("ngs_position") == "SLOT_WR")
+                .select(pl.col("gsis_id").alias("pid")).unique()
+                .with_columns(pl.lit(True).alias("is_slot")))
+        agg = agg.join(slot, on="pid", how="left").with_columns(
+            pl.col("is_slot").fill_null(False))
+    else:
+        agg = agg.with_columns(pl.lit(False).alias("is_slot"))
+
     agg = agg.filter(pl.col("pos").is_in(C.FANTASY_POSITIONS))
     agg = attach_snaps(agg, snaps, rosters)
 
@@ -283,6 +317,7 @@ def build_profiles(ev: pl.DataFrame, rosters: pl.DataFrame, snaps: pl.DataFrame,
 
     prof = pl.DataFrame(rows, infer_schema_length=None)
     prof = attach_expected_points(prof, ffopp, season)
+    prof = attach_separation(prof, ngs, season)
     return prof
 
 
