@@ -19,7 +19,7 @@ jobs:
 
       - name: Instalar el proyecto la primera vez
         run: |
-          if [ ! -d pipeline ] && [ -f nfl-edge26.zip ]; then
+          if [ -f nfl-edge26.zip ]; then
             unzip -qo nfl-edge26.zip -d _tmp
             rm -rf _tmp/nfl-edge/.github
             cp -r _tmp/nfl-edge/. .
