@@ -164,6 +164,104 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:12p
 a{color:var(--blue)}
 .tt{position:fixed;pointer-events:none;background:#000;border:1px solid var(--ring);
     border-radius:8px;padding:7px 9px;font-size:11.5px;color:var(--ink-2);z-index:99;display:none;max-width:230px}
+
+/* ============================ PICKS (Partidos) ============================ */
+:root{ --home:#3987e5; --away:#b8862b; }
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(236,131,90,.45)}50%{box-shadow:0 0 0 6px rgba(236,131,90,0)}}
+.anim{animation:rise .45s ease both;animation-delay:calc(var(--i,0)*55ms)}
+.grow{transition:width .9s cubic-bezier(.2,.8,.2,1), height .9s cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion: reduce){.anim{animation:none}.grow{transition:none}.upset-badge{animation:none!important}}
+
+.hero{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.hero .kpi{position:relative;overflow:hidden}
+.hero .kpi b{font-size:24px;letter-spacing:-.02em}
+.hero .kpi small{display:block;font-size:10.5px;color:var(--muted);margin-top:2px}
+.sect{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin:2px 0 8px}
+.big{font-size:17px;font-weight:700;line-height:1.3;margin:0 0 4px}
+.sub2{font-size:12.5px;color:var(--ink-2);margin:0}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}
+.chip{background:var(--surface);border:1px solid var(--line);color:var(--ink-2);border-radius:999px;
+      padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.chip[aria-pressed="true"]{background:var(--blue-dim);border-color:var(--blue);color:#fff}
+
+.g2{border-radius:16px;padding:14px;margin-bottom:12px;background:var(--surface);border:1px solid var(--ring)}
+.g2.alert{border-color:rgba(236,131,90,.55)}
+.g2top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.when{font-size:11.5px;color:var(--muted)}
+.upset-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.04em;
+  color:#1a1a19;background:var(--serious);padding:4px 9px;border-radius:999px;animation:pulse 2.2s ease-in-out infinite}
+.teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px}
+.tm{display:flex;flex-direction:column}
+.tm.r{align-items:flex-end;text-align:right}
+.tm .ab{font-size:22px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+.tm .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+.tm .rc{font-size:11.5px;color:var(--muted)}
+.vs{font-size:12px;color:var(--muted)}
+.pbar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface-2);margin:10px 0 4px;gap:2px}
+.pbar i{display:block;height:100%;width:0}
+.pbar i.a{background:var(--away);border-radius:5px 0 0 5px}
+.pbar i.h{background:var(--home);border-radius:0 5px 5px 0}
+.plab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.plab .c{color:var(--muted)}
+
+.picks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.pk{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px}
+.pk .lb{font-size:10px;font-weight:700;letter-spacing:.07em;color:var(--muted)}
+.pk .main{font-size:19px;font-weight:800;margin:3px 0 2px;letter-spacing:-.01em;display:flex;align-items:center;gap:6px}
+.pk .main .ck{font-size:13px;color:var(--good)}
+.pk .ft{font-size:11.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.meter{display:inline-flex;gap:2px;vertical-align:middle}
+.meter i{width:12px;height:6px;border-radius:2px;background:var(--baseline)}
+.meter.t3 i{background:var(--blue)} .meter.t2 i:nth-child(-n+2){background:var(--blue)}
+.meter.t1 i:nth-child(1){background:var(--blue)}
+.coin{color:var(--muted)}
+
+.alertbox{margin-top:10px;border-radius:12px;padding:9px 11px;background:rgba(236,131,90,.10);
+  border:1px solid rgba(236,131,90,.40);font-size:12.5px;color:var(--ink)}
+.alertbox b{color:var(--serious)}
+
+.pub{margin-top:12px}
+.pub .row{display:grid;grid-template-columns:58px 1fr;gap:8px;align-items:center;margin-top:6px}
+.pub .k{font-size:10.5px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+.split{position:relative;display:flex;height:22px;border-radius:6px;overflow:hidden;gap:2px;background:var(--surface-2)}
+.split i{display:flex;align-items:center;height:100%;width:0;font-style:normal;font-size:11px;font-weight:700;
+  color:#fff;white-space:nowrap;overflow:hidden;padding:0 7px}
+.split i.a{background:var(--away)} .split i.h{background:var(--home);justify-content:flex-end}
+.nodata{font-size:11.5px;color:var(--muted)}
+
+.sees{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.see{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--ink-2);
+     background:var(--surface-2);border-radius:10px;padding:8px 10px}
+.see .ico{flex:0 0 18px;text-align:center}
+details.why{margin-top:10px}
+details.why summary{font-size:12px;color:var(--muted);cursor:pointer;list-style:none}
+details.why summary::-webkit-details-marker{display:none}
+details.why summary:before{content:"▸ ";} details.why[open] summary:before{content:"▾ ";}
+.why .body{font-size:12.5px;color:var(--ink-2);margin-top:8px;line-height:1.55}
+.seq{display:inline-flex;gap:3px;vertical-align:middle;margin-left:4px}
+.seq i{width:16px;height:16px;border-radius:4px;font-style:normal;font-size:10px;font-weight:800;
+  display:inline-flex;align-items:center;justify-content:center}
+.seq .C{background:rgba(12,163,12,.22);color:#5fd35f} .seq .F{background:rgba(208,59,59,.22);color:#ff7b7b}
+.seq .P{background:var(--surface);color:var(--muted)}
+.res{font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;border:1px solid}
+.res.W{color:var(--good);border-color:rgba(12,163,12,.5)} .res.L{color:var(--critical);border-color:rgba(208,59,59,.5)}
+.res.P{color:var(--muted);border-color:var(--baseline)}
+
+.chart{width:100%;max-width:440px;display:block;overflow:visible;margin:4px 0}
+.chart text{fill:var(--muted);font-size:10px;font-family:inherit}
+.chart .lbl{fill:var(--ink-2);font-weight:700}
+.legend2{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:6px}
+.legend2 i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:640px){.two{grid-template-columns:1fr}.hero .kpi b{font-size:20px}}
+.mini{font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:6px}
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.how .card{margin:0}
+.how .ic{font-size:20px}
+.how b{display:block;font-size:13.5px;margin:4px 0 2px}
+.how span{font-size:12px;color:var(--ink-2)}
 </style>
 </head>
 <body>
@@ -175,7 +273,7 @@ a{color:var(--blue)}
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" data-view="start" aria-selected="true">Start / Sit</button>
     <button class="tab" role="tab" data-view="waivers" aria-selected="false">Waivers</button>
-    <button class="tab" role="tab" data-view="games" aria-selected="false">Partidos</button>
+    <button class="tab" role="tab" data-view="games" aria-selected="false">Partidos y picks</button>
     <button class="tab" role="tab" data-view="def" aria-selected="false">Defensas</button>
     <button class="tab" role="tab" data-view="list" aria-selected="false">Mi lista</button>
     <button class="tab" role="tab" data-view="about" aria-selected="false">Cómo funciona</button>
@@ -218,12 +316,15 @@ async function boot(){
     S.index = await (await fetch("data/index.json?"+Date.now())).json();
     S.week = S.index.current;
   }catch(e){ S.index = {weeks:[], current:null}; }
+  try{ S.latest = await (await fetch("data/latest.json?"+Date.now())).json(); }
+  catch(e){ S.latest = null; }
   await loadWeek(S.week);
 }
 async function loadWeek(w){
   const file = w ? `data/week_${w}.json` : "data/latest.json";
   try{
-    S.data = await (await fetch(file+"?"+Date.now())).json();
+    S.data = (S.latest && S.latest.meta && S.latest.meta.week === w) ? S.latest
+           : await (await fetch(file+"?"+Date.now())).json();
     S.week = S.data.meta.week;
     if(S.data.meta.default_format) S.fmt = S.data.meta.default_format;
   }catch(e){
@@ -293,45 +394,41 @@ function renderFilters(){
 }
 
 /* ---------------- alertas ---------------- */
+/* Precisión del semáforo de fantasy: una barra por color, sin párrafos */
 function trackPanel(){
-  const t = S.data.meta.track_record;
+  const t = (S.latest||S.data).meta.track_record;
   if(!t || !t.available) return "";
-  const g = t.games || {}, f = t.fantasy || {};
-  const cmp = g.vegas_acc==null ? "" :
-    (g.acc > g.vegas_acc ? `<span class="up">+${num(g.acc-g.vegas_acc)} vs Vegas</span>`
-     : g.acc < g.vegas_acc ? `<span class="down">${num(g.acc-g.vegas_acc)} vs Vegas</span>`
-     : `<span>igual que Vegas</span>`);
-  const totalL = ["verde","amarillo","rojo"].reduce((a,k)=>a+((f[k]||{}).n||0),0);
-  const small = totalL>0 && totalL<900;
-  const lights = ["verde","amarillo","rojo"].filter(k=>f[k]).map(k=>
-    `<div style="display:flex;justify-content:space-between;padding:3px 0">
-       <span><span class="dot ${k}"></span>${k} <span class="meta">(${f[k].n})</span></span>
-       <b class="${f[k].vs_promedio>=0?"up":"down"}">${f[k].vs_promedio>=0?"+":""}${num(f[k].vs_promedio,2)}</b>
-     </div>`).join("");
-  return `<div class="card">
-    <div class="meta" style="margin-bottom:8px">PRECISIÓN REAL DE ESTA TEMPORADA</div>
-    <div style="margin:-4px 0 9px;font-size:11.5px;color:var(--muted);line-height:1.45">
-      Calificada sola cada semana contra lo que publicamos ese martes. No es simulación.</div>
-    <div class="kpis" style="margin:0 0 8px">
-      <div class="kpi"><b>${num(g.acc,1)}%</b><span>ganadores (${g.n})</span></div>
-      <div class="kpi"><b>${g.vegas_acc==null?"—":num(g.vegas_acc,1)+"%"}</b><span>Vegas</span></div>
-      <div class="kpi"><b>${g.ats_acc==null?"—":num(g.ats_acc,0)+"%"}</b><span>spread (${g.ats_n||0})</span></div>
-    </div>
-    <div style="font-size:11.5px;color:var(--muted)">${cmp}</div>
-    ${lights?`<div style="margin-top:10px"><div class="meta" style="margin-bottom:4px">
-      RENDIMIENTO REAL POR SEMÁFORO <span class="meta">(puntos vs el propio promedio del jugador)</span></div>
-      ${lights}
-      ${small?`<div style="margin-top:8px;color:var(--warning);font-size:11.5px;line-height:1.5">
-        Muestra chica (${totalL} casos). El orden verde &gt; amarillo &gt; rojo tarda unas
-        4-5 semanas en estabilizarse. En la temporada 2025 completa la brecha fue
-        <b>+0.91 puntos</b> con significancia estadística.</div>`:""}
-      </div>`:""}
+  const f = t.fantasy || {};
+  const keys = ["verde","amarillo","rojo"].filter(k=>f[k]);
+  if(!keys.length) return "";
+  const totalL = keys.reduce((a,k)=>a+f[k].n,0);
+  const max = Math.max(...keys.map(k=>Math.abs(f[k].vs_promedio)), 1);
+  const gap = (f.verde&&f.rojo) ? f.verde.vs_promedio - f.rojo.vs_promedio : null;
+  const rows = keys.map(k=>{
+    const v = f[k].vs_promedio, w = Math.abs(v)/max*50;
+    return `<div style="display:grid;grid-template-columns:78px 1fr 48px;gap:8px;align-items:center;margin:5px 0"
+        data-tip="${k}: ${v>=0?"+":""}${num(v,2)} pts vs su promedio (${f[k].n} casos)">
+      <span style="font-size:12px"><span class="dot ${k}"></span>${k}</span>
+      <div style="position:relative;height:12px;background:var(--surface-2);border-radius:4px">
+        <div style="position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--baseline)"></div>
+        <div class="grow" data-w="${w}" style="position:absolute;top:0;bottom:0;${v>=0?"left:50%":"right:50%"};width:0;
+          border-radius:4px;background:var(--${k==="verde"?"good":k==="amarillo"?"warning":"critical"})"></div>
+      </div>
+      <b style="text-align:right;font-size:12.5px" class="${v>=0?"up":"down"}">${v>=0?"+":""}${num(v,2)}</b>
+    </div>`;}).join("");
+  return `<div class="card anim">
+    <div class="sect">¿FUNCIONA EL SEMÁFORO? · ${m_season()} REAL</div>
+    <p class="big">${gap==null?"":`Verde le saca <span class="${gap>=0?"up":"down"}">${gap>=0?"+":""}${num(gap,2)} pts</span> al rojo`}</p>
+    <p class="sub2">Puntos por encima (o debajo) del promedio de cada jugador. Meta: verde arriba, rojo abajo.</p>
+    ${rows}
+    <div class="mini">${totalL} casos · referencia 2025: +0.91 pts${totalL<900?" · muestra aún chica":""}</div>
   </div>`;
 }
+const m_season = () => (S.data?.meta?.season)||"";
 
 function renderAlerts(){
   if(!["start","waivers","games"].includes(S.view)){ $("#alerts").innerHTML=""; return; }
-  if(S.view==="games"){ $("#alerts").innerHTML = trackPanel(); return; }
+  if(S.view==="games"){ $("#alerts").innerHTML = ""; return; }
   const m = S.data.meta;
   const greens = (S.data.players||[])
     .filter(p => F(p).light === "verde")
@@ -364,6 +461,7 @@ function renderAlerts(){
       </div>`).join("") + `</div></details>`;
   }
   $("#alerts").innerHTML = html;
+  animate();
 }
 
 /* ---------------- tarjeta de jugador ---------------- */
@@ -533,71 +631,237 @@ function viewWaivers(){
           p.market_trend?`<span>mercado <b>${num(p.market_trend*100,0)}</b></span>`:"")).join(""));
 }
 
-function viewGames(){
-  const gs = S.data.games||[];
-  if(!gs.length) return `<div class="empty">Sin partidos para esta semana.</div>`;
-  const bt = S.data.meta.backtest || {};
-  let head = "";
-  if(bt.available){
-    head = `<div class="note"><b>Qué tan bueno es este modelo (backtest real, ${esc(bt.seasons)}):</b>
-      acierta el ganador en <b>${bt.accuracy}%</b> de ${bt.n} partidos
-      ${bt.market_accuracy?`(el mercado de apuestas acierta ${bt.market_accuracy}%)`:""}.
-      Brier ${bt.brier}. Contra el spread: <b>${bt.ats_accuracy}%</b>.
-      Traducción honesta: es bueno prediciendo ganadores, y contra la línea
-      <b>no tiene ventaja demostrada</b>. Úsalo como información, no como consejo financiero.</div>`;
-  }
-  const rules = S.data.meta.market_rules || {};
-  head += `<div class="note"><b>Regla de convivencia con Vegas.</b> El margen que ves está
-    anclado al mercado en un <b>${Math.round((rules.anchor||0.82)*100)}%</b>. Sólo nos separamos
-    de la línea cuando la diferencia supera <b>${rules.disagree_min_pts||4} puntos</b>
-    <b>y</b> al menos <b>${rules.consensus_required||2}</b> de nuestras señales propias
-    (Elo, EPA ajustada, descanso) apuntan al mismo lado. Si no, se manda con Vegas.
-    Esto no es timidez: es lo que dijo el experimento sobre 284 partidos.<br><br>
-    <b>Y cuando sí discrepa, léelo al revés.</b> Medido en 2025: los partidos donde el
-    modelo difiere fuerte del mercado fueron sus <b>peores</b> (57% de acierto contra
-    67% de Vegas). Mientras más seguro está de que Vegas se equivoca, peor le va.
-    Por eso una discrepancia aquí es <b>bandera roja</b>, no oportunidad — y por eso
-    no publicamos lados de spread como recomendación.</div>`;
-  const STANCE = {
-    coincide:        ["conf", "=", "coincide con Vegas"],
-    discrepa_debil:  ["conf", "~", "difiere sin respaldo → se manda con Vegas"],
-    discrepa:        ["amarillo", "!", "el modelo difiere — cuidado"],
-    discrepa_fuerte: ["rojo", "!!", "difiere fuerte — bandera roja"],
-    sin_linea:       ["conf", "?", "sin línea de mercado"],
-  };
-  return head + gs.map(g=>{
-    const ph = Math.round((g.p_home||0)*100), pa = 100-ph;
-    const edge = g.edge;
-    const st = STANCE[g.stance] || STANCE.coincide;
-    const edgeTxt = `<span class="pill ${st[0]}"><span class="ic">${st[1]}</span>${st[2]}</span>`
-      + (g.ats_pick ? `<span class="pill amarillo"><span class="ic">▲</span>spread: ${esc(g.ats_pick)}</span>` : "");
-    return `<div class="card">
-      <div class="game">
-        <div><div class="team">${esc(g.away_team)}</div>
-             <div class="teamrec">${esc(g.away_record)} · visitante</div></div>
-        <div style="text-align:right"><div class="team">${esc(g.home_team)}</div>
-             <div class="teamrec">${esc(g.home_record)} · local</div></div>
-      </div>
-      <div class="bar"><i style="width:${pa}%"></i><i style="width:${ph}%"></i></div>
-      <div class="game" style="font-size:11.5px;color:var(--muted)">
-        <span>${pa}%</span><span>${ph}%</span></div>
-      <div style="margin-top:9px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <span class="pill conf">
-          <span class="ic">${g.confidence==="alta"?"●●●":g.confidence==="media"?"●●○":"●○○"}</span>
-          ${esc(g.favorite)} ${num(g.favorite_pct,0)}% · confianza ${esc(g.confidence)}</span>
-        ${edgeTxt}
-      </div>
-      <div class="insight">${esc(g.explanation)}</div>
-      <div class="stats">
-        <span>margen final <b>${g.model_margin>0?"+":""}${num(g.model_margin)}</b></span>
-        <span>modelo puro <b>${g.raw_margin==null?"—":(g.raw_margin>0?"+":"")+num(g.raw_margin)}</b></span>
-        <span>spread Vegas <b>${g.vegas_spread==null?"—":(g.vegas_spread>0?"+":"")+num(g.vegas_spread)}</b></span>
-        <span>total <b>${num(g.vegas_total)}</b></span>
-        <span>señales a favor <b>${g.consensus==null?"—":g.consensus+"/3"}</b></span>
-        <span>Elo <b>${num(g.elo_away,0)} / ${num(g.elo_home,0)}</b></span>
-      </div>
-    </div>`;
+/* ======================= PARTIDOS: picks del modelo ======================= */
+const TIER = {
+  fuerte:{n:3, t:"Señal fuerte"}, media:{n:2, t:"Señal"},
+  leve:{n:1, t:"Leve"}, moneda:{n:0, t:"Moneda al aire"}
+};
+const ICON = {mask:"🎭", fire:"🔥", ice:"🧊", bed:"🛌", crowd:"👥", wind:"💨", scale:"⚖️"};
+const lineTxt = v => v==null ? "—" : v===0 ? "PK" : (v>0?"+":"−")+String(Math.abs(v)).replace(/\.0$/,"");
+const oddsTxt = v => v==null ? "—" : (v>0?"+":"")+v;
+const pctTxt = v => v==null ? "—" : Math.round(v)+"%";
+function kickTxt(iso){
+  if(!iso) return "";
+  try{
+    const d = new Date(iso);
+    const day = d.toLocaleDateString("es-MX",{weekday:"short", day:"numeric", timeZone:"America/Mexico_City"});
+    const hr = d.toLocaleTimeString("es-MX",{hour:"numeric", minute:"2-digit", timeZone:"America/Mexico_City"});
+    return `${day} · ${hr} CDMX`;
+  }catch(e){ return ""; }
+}
+const meter = n => `<span class="meter t${n}" aria-hidden="true"><i></i><i></i><i></i></span>`;
+const seqHtml = seq => `<span class="seq">${(seq||[]).map(x=>`<i class="${x}">${x==="C"?"✓":x==="F"?"✗":"="}</i>`).join("")}</span>`;
+
+function pctOf(b){ const n=(b.w||0)+(b.l||0); return n? Math.round(100*b.w/n):null; }
+
+/* --- gráfica: % de acierto contra el spread por semana, con línea de equilibrio --- */
+function chartSpreadWeeks(t){
+  const wk = (t.by_week||[]).filter(w=>(w.sp.w+w.sp.l)>0);
+  if(!wk.length) return "";
+  const W=320,H=120,pl=26,pb=18,pt=8,bw=Math.min(28,(W-pl-8)/wk.length-6);
+  const y = v => pt + (H-pt-pb)*(1-v/100);
+  const be = y(52.4);
+  const bars = wk.map((w,i)=>{
+    const p = 100*w.sp.w/(w.sp.w+w.sp.l), x = pl+6+i*((W-pl-8)/wk.length);
+    const h = (H-pb)-y(p);
+    return `<g data-tip="Semana ${w.week}: ${w.sp.w}-${w.sp.l}${w.sp.p?"-"+w.sp.p:""} (${Math.round(p)}%)${w.backfill?" · reconstruida":""}">
+      <rect x="${x}" y="${pt}" width="${bw+6}" height="${H-pt-pb}" fill="transparent"/>
+      <rect class="grow-h" x="${x+3}" y="${H-pb}" width="${bw}" height="0" data-y="${y(p)}" data-h="${h}" rx="4"
+        fill="var(--blue)" opacity="${w.backfill?0.55:1}"/>
+      <text x="${x+3+bw/2}" y="${H-4}" text-anchor="middle">S${w.week}</text></g>`;
   }).join("");
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Acierto contra el spread por semana">
+    <text x="0" y="${y(100)+3}">100</text><text x="0" y="${y(50)+3}">50</text>
+    <line x1="${pl}" x2="${W}" y1="${H-pb}" y2="${H-pb}" stroke="var(--baseline)"/>
+    ${bars}
+    <line x1="${pl}" x2="${W}" y1="${be}" y2="${be}" stroke="var(--ink-2)" stroke-dasharray="4 3" stroke-width="1.5"/>
+    <text x="${W}" y="${be-4}" text-anchor="end" class="lbl">52.4% equilibrio</text>
+  </svg>`;
+}
+
+/* --- gráfica: upsets reales vs esperados por semana --- */
+function chartUpsets(sp){
+  const wk = sp.by_week||[];
+  if(!wk.length) return "";
+  const W=320,H=120,pl=18,pb=18,pt=8;
+  const mx = Math.max(...wk.map(w=>Math.max(w.upsets,w.expected)),1)+1;
+  const y = v => pt+(H-pt-pb)*(1-v/mx);
+  const step=(W-pl-8)/wk.length, bw=Math.min(26,step-10);
+  const g = wk.map((w,i)=>{
+    const x=pl+6+i*step;
+    return `<g data-tip="Semana ${w.week}: ${w.upsets} upsets · Vegas esperaba ${num(w.expected,1)}">
+      <rect x="${x}" y="${pt}" width="${bw+8}" height="${H-pt-pb}" fill="transparent"/>
+      <rect class="grow-h" x="${x+4}" y="${H-pb}" width="${bw}" height="0" data-y="${y(w.upsets)}" data-h="${(H-pb)-y(w.upsets)}" rx="4" fill="var(--away)"/>
+      <line x1="${x}" x2="${x+bw+8}" y1="${y(w.expected)}" y2="${y(w.expected)}" stroke="var(--ink)" stroke-width="2.5"/>
+      <text x="${x+4+bw/2}" y="${H-4}" text-anchor="middle">S${w.week}</text></g>`;
+  }).join("");
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Upsets por semana contra lo esperado">
+    <line x1="${pl}" x2="${W}" y1="${H-pb}" y2="${H-pb}" stroke="var(--baseline)"/>${g}</svg>
+    <div class="legend2"><span><i style="background:var(--away)"></i>upsets reales</span>
+      <span><i style="background:var(--ink);height:3px;vertical-align:3px"></i>lo que Vegas esperaba</span></div>`;
+}
+
+function gamesHeader(){
+  const L = S.latest || S.data, m = L.meta, t = m.track_record || {}, sp = m.season_pattern || {};
+  const gs = (S.data.games||[]);
+  const strong = gs.filter(g=>g.spread_pick && ["fuerte","media"].includes(g.spread_pick.tier)).length;
+  const ups = gs.filter(g=>g.upset).length;
+  const s = t.spread || {}, ml = t.moneyline || {}, u = t.upset || {};
+  let h = "";
+  if(S.data.meta.week === m.week){
+    h += `<div class="hero">
+      <div class="kpi anim" style="--i:0"><b data-count="${strong}">${strong}</b><span>picks con señal</span><small>de ${gs.length} partidos</small></div>
+      <div class="kpi anim" style="--i:1"><b data-count="${ups}" style="color:var(--serious)">${ups}</b><span>ojo con el upset</span><small>perro con ventaja</small></div>
+      <div class="kpi anim" style="--i:2"><b>${s.w!=null?`${s.w}-${s.l}`:"—"}</b><span>spread ${m.season}</span><small>${s.pct!=null?Math.round(s.pct)+"% de acierto":""}</small></div>
+    </div>`;
+  }
+  // marcador del modelo + patrón de upsets
+  if(t.available){
+    const tiers = t.spread_tiers||{};
+    const sig = ["fuerte","media"].reduce((a,k)=>({w:a.w+((tiers[k]||{}).w||0), l:a.l+((tiers[k]||{}).l||0)}),{w:0,l:0});
+    h += `<div class="two">
+      <div class="card anim" style="--i:3">
+        <div class="sect">MARCADOR DEL MODELO · ${m.season}</div>
+        <p class="big">Spread ${s.w}-${s.l}${s.p?`-${s.p}`:""} · Moneyline ${ml.w}-${ml.l}</p>
+        <p class="sub2">Con señal: <b>${sig.w}-${sig.l}</b> · Alertas de upset: <b>${u.cover||0}-${(u.n||0)-(u.cover||0)}</b> cubrieron</p>
+        ${chartSpreadWeeks(t)}
+        <div class="mini">Barras claras = semanas reconstruidas con la regla nueva (no se publicaron en su momento). Desde la semana ${m.week} todo queda congelado antes del kickoff.</div>
+      </div>
+      ${sp.available ? `<div class="card anim" style="--i:4">
+        <div class="sect">¿MÁS UPSETS DE LO NORMAL?</div>
+        <p class="big">${sp.season.upsets} upsets vs ${Math.round(sp.season.upsets_expected)} esperados: ${Math.abs(sp.season.upsets-sp.season.upsets_expected)<=4?"normal":sp.season.upsets>sp.season.upsets_expected?"más de lo normal":"menos de lo normal"}</p>
+        <p class="sub2">Lo raro: perros de +7 o más cubrieron <b>${sp.season.big_dog_cover!=null?Math.round(sp.season.big_dog_cover)+"%":"—"}</b> (${sp.season.big_dog_n}) y ${sp.season.big_dog_upsets} ganaron directo.</p>
+        ${chartUpsets(sp)}
+        <div class="mini">Ojo: en ${esc(sp.hist_seasons)} los perros cubrieron ${num(sp.hist_early.dog_cover,0)}% en sem. 1-5 y solo ${num(sp.hist_late.dog_cover,0)}% de la 6 en adelante.</div>
+      </div>` : ""}
+    </div>`;
+  }
+  return h;
+}
+
+function filterChips(){
+  const f = S.gfilter || "todos";
+  const opts = [["todos","Todos"],["upset","⚠ Ojo upset"],["senal","Con señal"]];
+  return `<div class="chips" role="group" aria-label="Filtrar partidos">${opts.map(([k,l])=>
+    `<button class="chip" data-gf="${k}" aria-pressed="${f===k}">${l}</button>`).join("")}</div>`;
+}
+
+function publicBlock(g){
+  const p = g.public;
+  if(!p || p.spread_home==null) return `<div class="pub"><span class="nodata">👥 % del público: sin datos esta corrida</span></div>`;
+  const sp = g.spread_pick ? g.vegas_spread : null;
+  const row = (k, a, h, la, lh) => `<div style="margin-top:8px">
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-2);margin-bottom:3px">
+      <span><b>${pctTxt(a)}</b> ${esc(la)}</span><span class="k" style="font-size:10px;font-weight:700;color:var(--muted)">${k}</span><span>${esc(lh)} <b>${pctTxt(h)}</b></span></div>
+    <div class="split" style="height:12px" data-tip="${esc(la)} ${pctTxt(a)} · ${esc(lh)} ${pctTxt(h)}">
+      <i class="a grow" data-w="${a}"></i><i class="h grow" data-w="${h}"></i></div></div>`;
+  let s = `<div class="pub"><div class="sect" style="margin:0">👥 DÓNDE ESTÁ EL PÚBLICO (% de boletos)</div>`;
+  if(sp!=null) s += row("SPREAD", p.spread_away, p.spread_home,
+      `${g.away_team} ${lineTxt(sp)}`, `${g.home_team} ${lineTxt(-sp)}`);
+  if(p.ml_home!=null) s += row("GANADOR", p.ml_away, p.ml_home, g.away_team, g.home_team);
+  if(p.spread_home_money!=null) s += `<div class="mini">Dinero en el spread: ${g.home_team} ${pctTxt(p.spread_home_money)} · ${g.away_team} ${pctTxt(100-p.spread_home_money)}</div>`;
+  return s + `</div>`;
+}
+
+function gameCard(g, i){
+  const sp = g.spread_pick, ml = g.ml_pick, up = g.upset;
+  const ph = Math.round((g.p_home||0)*100), pa = 100-ph;
+  const tier = TIER[sp?.tier] || TIER.moneda;
+  const fav = g.vegas_spread==null ? "" : g.vegas_spread>0 ? `${g.home_team} ${lineTxt(-g.vegas_spread)}` : g.vegas_spread<0 ? `${g.away_team} ${lineTxt(g.vegas_spread)}` : "PK";
+  const res = (S.latest?.graded||{})[g.game_id];
+  const resTag = (r) => r ? `<span class="res ${r}">${r==="W"?"✓ acertó":r==="L"?"✗ falló":"= push"}</span>` : "";
+  return `<div class="g2 anim ${up?"alert":""}" style="--i:${i}">
+    <div class="g2top"><span class="when">${esc(kickTxt(g.kickoff_utc))}${res?` · final ${g.away_team} ${res.as}-${res.hs} ${g.home_team}`:""}</span>
+      ${up?`<span class="upset-badge">⚠ OJO CON EL UPSET</span>`:""}</div>
+    <div class="teams">
+      <div class="tm"><span class="ab"><span class="sw" style="background:var(--away)"></span>${esc(g.away_team)}</span>
+        <span class="rc">${esc(g.away_record)} · visita</span></div>
+      <span class="vs">@</span>
+      <div class="tm r"><span class="ab">${esc(g.home_team)}<span class="sw" style="background:var(--home)"></span></span>
+        <span class="rc">local · ${esc(g.home_record)}</span></div>
+    </div>
+    <div class="pbar" data-tip="Probabilidad de ganar · ${g.away_team} ${pa}% · ${g.home_team} ${ph}%">
+      <i class="a grow" data-w="${pa}"></i><i class="h grow" data-w="${ph}"></i></div>
+    <div class="plab"><span>${pa}%</span><span class="c">prob. de ganar · Vegas: ${esc(fav)}</span><span>${ph}%</span></div>
+
+    <div class="picks">
+      <div class="pk">
+        <div class="lb">SPREAD</div>
+        <div class="main"><span class="ck">✓</span>${sp?esc(sp.txt):"—"}</div>
+        <div class="ft">${meter(tier.n)}<span class="${tier.n?"":"coin"}">${tier.t}${sp?.hist_pct!=null?` · ${Math.round(sp.hist_pct)}% hist.`:""}</span> ${resTag(res?.sp?.res)}</div>
+      </div>
+      <div class="pk">
+        <div class="lb">GANADOR (MONEYLINE)</div>
+        <div class="main"><span class="ck">✓</span>${ml?esc(ml.side):"—"} <span style="font-size:13px;color:var(--ink-2);font-weight:600">${ml?Math.round(ml.prob*100)+"%":""}</span></div>
+        <div class="ft">${ml?.odds!=null?`momio ${oddsTxt(ml.odds)} · $100 paga $${ml.pays_per_100}`:""} ${resTag(res?.ml?.res)}</div>
+      </div>
+    </div>
+    ${up?`<div class="alertbox"><b>⚠ ${esc(up.txt)}.</b> ${up.level==="alto"?"Señal fuerte":"Señal"}: el favorito viene inflado por el mercado.</div>`:""}
+    ${publicBlock(g)}
+    ${(g.sees||[]).length?`<div class="sees">${g.sees.map(s=>`<div class="see"><span class="ico">${ICON[s.ic]||"•"}</span><span>${esc(s.t)}</span></div>`).join("")}</div>`:""}
+    <details class="why"><summary>Por qué este pick</summary><div class="body">
+      ${(sp?.reasons||[]).map(r=>`• ${esc(r.t)}`).join("<br>")}
+      ${sp?.form?`<div style="margin-top:8px">Últimos 5 contra el spread:<br>
+        ${esc(g.away_team)} ${seqHtml(sp.form[g.away_team]?.seq)} &nbsp; ${esc(g.home_team)} ${seqHtml(sp.form[g.home_team]?.seq)}</div>`:""}
+      <div class="mini">✓ = cubrió · ✗ = no cubrió · = empate con la línea. Equilibrio para ganar dinero a −110: 52.4%.</div>
+    </div></details>
+  </div>`;
+}
+
+/* semanas pasadas (archivos viejos sin picks): resultado de cada pick congelado */
+function pastWeekList(){
+  const gr = Object.values((S.latest||{}).graded||{}).filter(x=>x.week===S.data.meta.week);
+  if(!gr.length) return "";
+  const sp = gr.filter(x=>x.sp), w = sp.filter(x=>x.sp.res==="W").length, l = sp.filter(x=>x.sp.res==="L").length;
+  return `<div class="card anim"><div class="sect">SEMANA ${S.data.meta.week} · RESULTADOS DE LOS PICKS</div>
+    <p class="big">Spread ${w}-${l} · Moneyline ${gr.filter(x=>x.ml?.res==="W").length}-${gr.filter(x=>x.ml?.res==="L").length}</p>
+    ${gr.map((x,i)=>`<div class="see anim" style="--i:${i};margin-top:6px;justify-content:space-between;flex-wrap:wrap">
+      <span><b>${esc(x.away)} ${x.as} - ${x.hs} ${esc(x.home)}</b>${x.upset?' <span style="color:var(--serious)">⚠</span>':""}</span>
+      <span>${x.sp?`${esc(x.sp.side)} ${lineTxt(x.sp.line)} <span class="res ${x.sp.res}">${x.sp.res==="W"?"✓":x.sp.res==="L"?"✗":"="}</span>`:""}
+       ${x.ml?` · ${esc(x.ml.side)} <span class="res ${x.ml.res}">${x.ml.res==="W"?"✓":x.ml.res==="L"?"✗":"="}</span>`:""}</span>
+    </div>`).join("")}
+    ${gr.some(x=>x.bf)?`<div class="mini">Semana reconstruida con la regla actual (no publicada en su momento).</div>`:""}</div>`;
+}
+
+function viewGames(){
+  let gs = S.data.games||[];
+  if(!gs.length) return `<div class="empty">Sin partidos para esta semana.</div>`;
+  const hasPicks = gs.some(g=>g.spread_pick);
+  if(!hasPicks) return gamesHeader() + (pastWeekList() || `<div class="empty">Esta semana se publicó antes de que existieran los picks.</div>`);
+  const f = S.gfilter || "todos";
+  if(f==="upset") gs = gs.filter(g=>g.upset);
+  if(f==="senal") gs = gs.filter(g=>g.spread_pick && ["fuerte","media"].includes(g.spread_pick.tier));
+  // primero las alertas, luego por fuerza de la señal, luego por hora
+  const rank = g => (g.upset?0:1)*10 + (3-(TIER[g.spread_pick?.tier]?.n||0));
+  gs = gs.slice().sort((a,b)=> rank(a)-rank(b) || String(a.kickoff_utc).localeCompare(String(b.kickoff_utc)));
+  const ph = S.latest?.meta?.picks_hist?.spread_tiers || {};
+  const legend = `<div class="card anim" style="--i:5;padding:11px 13px">
+    <div class="sect" style="margin-bottom:6px">CÓMO LEER LA CONFIANZA DEL SPREAD</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;font-size:12px;color:var(--ink-2)">
+      ${["fuerte","media","leve","moneda"].map(k=>`<span>${meter(TIER[k].n)} ${TIER[k].t} · <b>${ph[k]?.pct!=null?Math.round(ph[k].pct)+"%":"—"}</b></span>`).join("")}
+    </div>
+    <div class="mini">% = acierto histórico 2006-2025 de cada nivel. Para ganar dinero se necesita 52.4%. "Moneda al aire" = el modelo escoge, pero sin ventaja.</div></div>`;
+  return gamesHeader() + legend + filterChips() +
+    (gs.length ? gs.map((g,i)=>gameCard(g,i)).join("") : `<div class="empty">Ningún partido con ese filtro esta semana.</div>`);
+}
+
+/* animación: barras crecen, números cuentan */
+function animate(){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.querySelectorAll(".grow[data-w]").forEach(el=>{ el.style.width = el.dataset.w+"%"; });
+    document.querySelectorAll(".grow-h").forEach(el=>{
+      el.style.transition="y .9s cubic-bezier(.2,.8,.2,1), height .9s cubic-bezier(.2,.8,.2,1)";
+      el.setAttribute("y", el.dataset.y); el.setAttribute("height", Math.max(0,el.dataset.h));
+    });
+    document.querySelectorAll("[data-count]").forEach(el=>{
+      const end = +el.dataset.count; if(!(end>0)) return;
+      const t0 = performance.now(), dur = 700;
+      const tick = now => { const k = Math.min(1,(now-t0)/dur);
+        el.textContent = Math.round(end*(1-Math.pow(1-k,3))); if(k<1) requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+    });
+  }));
+  document.querySelectorAll("[data-gf]").forEach(b=> b.onclick = () => { S.gfilter = b.dataset.gf; renderView(); });
 }
 
 /* heatmap: escala DIVERGENTE (azul = defensa dura ↔ rojo = permisiva) */
@@ -681,87 +945,49 @@ function bindList(){
 }
 
 function viewAbout(){
-  const m = S.data.meta, s = m.sources||{}, bt = m.backtest||{};
+  const m = (S.latest||S.data).meta, s = m.sources||{}, ph = (m.picks_hist||{}).spread_tiers||{}, up = (m.picks_hist||{}).upset||{};
   const ok = b => b ? `<span style="color:var(--good)">● activa</span>`
-                    : `<span style="color:var(--warning)">● no disponible en esta corrida</span>`;
+                    : `<span style="color:var(--warning)">● no disponible</span>`;
+  const card = (ic, t, d, i) => `<div class="card anim" style="--i:${i}"><div class="ic">${ic}</div><b>${t}</b><span>${d}</span></div>`;
+  const u = up["2016-2025"]||{};
   return `
-  <details class="acc" open><summary>Cómo se calcula el semáforo</summary><div>
-    Cada jugador se descompone en <b>canales de producción</b> (tierra, recepción
-    corta, recepción profunda, zona roja, pase) según su uso real. Después se mide
-    la permisividad del rival <b>en cada canal por separado</b> y se ponderan.
-    Por eso un RB puede tener matchup malo por tierra y bueno por el aire contra la
-    misma defensa: lo que importa es de qué canal viene su valor.<br><br>
-    Encima se aplican: total implícito de Vegas, ritmo del rival, guion de juego
-    (favorito/underdog), objetivos liberados por lesiones y clima.
-    El resultado se convierte a percentil <b>dentro de su posición</b>:
-    <b>verde ≥ 70</b>, amarillo 45-69, rojo &lt; 45.
+  <div class="sect">LO QUE VE EL MODELO QUE LOS OJOS NO</div>
+  <div class="how">
+    ${card("🔥🧊","Los que cubren mucho, quedan caros","Si un equipo cubrió 4 de 5, la siguiente línea ya lo cobra de más. Ir contra él: "+(ph.fuerte?.pct?Math.round(ph.fuerte.pct)+"%":"55%")+" histórico.",0)}
+    ${card("⚠️","Ojo con el upset","Cuando esa señal apunta al perro: cubrió "+(u.cover?Math.round(u.cover)+"%":"55%")+" en 2016-2025.",1)}
+    ${card("🎭","El récord engaña","Un 4-1 que juega como el #24 en EPA. Vegas ya lo sabe; tú también deberías.",2)}
+    ${card("🩹","El reporte de lesiones pesa","Aparecer en él cuesta ~0.9 pts aunque practique completo. Más que el matchup.",3)}
+    ${card("🛡️","Defensas ajustadas por rival","Una defensa que enfrentó puros ataques top se ve peor de lo que es. Aquí se corrige.",4)}
+    ${card("🎯","xFP: puntos que «debería» tener","Volumen sin puntos = compra. Puntos sin volumen = vende.",5)}
+  </div>
+
+  <div class="sect">LO QUE NO HACE (Y POR QUÉ)</div>
+  <div class="how">
+    ${card("🎲","Ganarle a Vegas en ganadores","El mercado acierta ~66%. El modelo se ancla 88% a él porque medimos que no lo supera.",6)}
+    ${card("🪙","Ver ventaja en todos los partidos","La mayoría de los partidos son «moneda al aire». El modelo escoge, pero te lo dice.",7)}
+    ${card("📡","Receptores abiertos (WR)","El semáforo casi no separa en WR. Úsalo de apoyo, no para decidir.",8)}
+  </div>
+
+  <details class="acc"><summary>Niveles de confianza del spread</summary><div>
+    ${["fuerte","media","leve","moneda"].map(k=>`${meter(TIER[k].n)} <b>${TIER[k].t}</b>: ${ph[k]?.pct!=null?ph[k].pct+"%":"—"} en ${ph[k]?.n||"—"} partidos (2006-2025)`).join("<br>")}
+    <br><br>Equilibrio para ganar dinero apostando a −110: <b>52.4%</b>.
+    Se probaron también Elo vs línea, suerte, rebote, descanso, perro local y divisional: ninguna se repitió en las dos épocas, así que no deciden.
   </div></details>
 
-  <details class="acc"><summary>Qué es el xFP y por qué es la columna más valiosa</summary><div>
-    <b>xFP = puntos fantasy esperados</b> dada la oportunidad que realmente tuvo:
-    cuántos objetivos, a qué profundidad, cuántos acarreos, cuántos toques en zona
-    roja. Es lo que "debería" haber anotado un jugador promedio con ese mismo uso.<br><br>
-    La columna <b>SUERTE</b> es la resta: puntos reales − xFP.<br>
-    • <b class="down">Positivo</b> = anotó más de lo que su uso justifica. Venía con
-      suerte (TDs largos, alta tasa de anotación). Históricamente <b>corrige a la baja</b>.
-      Es el mejor momento para cambiarlo.<br>
-    • <b class="up">Negativo</b> = tiene el volumen pero no los puntos.
-      <b>Candidato de compra</b>: los puntos suelen llegar después.<br><br>
-    Por eso ordenar por SUERTE ascendente es una de las formas más rápidas de
-    encontrar valor que nadie está viendo.
+  <details class="acc"><summary>Fuentes de datos (gratis)</summary><div>
+    nflverse (jugadas, stats, lesiones, líneas de Vegas): ${ok(s.nflverse)}<br>
+    % del público (Action Network): ${ok(s.public_betting)}<br>
+    Sleeper (altas/bajas 24h): ${ok(s.sleeper_trending)}<br>
+    ESPN (lesiones rápidas): ${ok(s.espn_injuries)}<br>
+    Open-Meteo (viento/lluvia): ${ok(s.weather)}
   </div></details>
 
-  <details class="acc"><summary>El reporte de lesiones: el hallazgo más grande</summary><div>
-    Medido sobre la temporada 2025 completa (3,988 casos): un jugador que
-    <b>simplemente aparece</b> en el reporte de lesiones rinde <b>0.92 puntos por debajo
-    de su propio promedio</b> — incluso si practicó completo (t=3.48, p=0.0005).
-    Es un efecto <b>más grande que toda la señal de matchup</b>.<br><br>
-    Por eso la columna ESTADO existe y por eso el riesgo <b>no</b> se mezcla con el
-    semáforo: el semáforo responde "¿qué tan bueno es el rival?" y el estado responde
-    "¿qué tan sano está?". Son preguntas distintas. Mezclarlas ensuciaba las dos —
-    lo medimos, la señal caía, y por eso están separadas.<br><br>
-    La columna <b>INICIO</b> sí las combina: es calidad + matchup − riesgo, y es la
-    que debes usar para decidir a quién alinear.
+  <details class="acc"><summary>Cuándo se actualiza</summary><div>
+    Martes (con el Monday Night), jueves (antes del TNF), sábado (lesiones finales) y domingo temprano.
+    Cada pick se <b>congela antes del kickoff</b>: lo que se califica es lo que viste antes del partido.<br>
+    Última corrida: ${esc(m.generated_at)} · semana ${m.week} · datos: ${esc(m.data_confidence)}.
   </div></details>
-
-  <details class="acc"><summary>Por qué los rankings defensivos aquí son distintos</summary><div>
-    Una defensa que enfrentó a las mejores ofensivas se ve peor de lo que es.
-    Aquí se resuelve <code>valor = media + efecto_defensa + efecto_ofensa</code>
-    con regresión ridge, lo que separa el mérito de la defensa del de sus rivales.
-    Los rankings que ves ya están ajustados.
-  </div></details>
-
-  <details class="acc"><summary>Honestidad sobre las predicciones de partidos</summary><div>
-    ${bt.available ? `Backtest walk-forward sobre ${esc(bt.seasons)} (${bt.n} partidos):
-      acierta el ganador <b>${bt.accuracy}%</b> de las veces, contra
-      <b>${bt.market_accuracy}%</b> del mercado. Contra el spread: <b>${bt.ats_accuracy}%</b>,
-      que es esencialmente una moneda al aire.<br><br>
-      Es decir: el modelo predice ganadores bien, pero <b>no le gana a la línea de
-      Vegas</b>. Los mercados de NFL son muy eficientes. Esto es información para
-      decidir, no consejo financiero.` : "Backtest no disponible en esta corrida."}
-  </div></details>
-
-  <details class="acc"><summary>Fuentes de datos (todas gratuitas)</summary><div>
-    <b>nflverse</b> vía nflreadpy — play-by-play, stats semanales, snap counts,
-    rosters, lesiones, calendario y <b>líneas de Vegas</b>: ${ok(s.nflverse)}<br>
-    <b>Sleeper</b> — altas/bajas en tendencia 24h: ${ok(s.sleeper_trending)}<br>
-    <b>ESPN</b> — designaciones de lesión rápidas: ${ok(s.espn_injuries)}<br>
-    <b>Open-Meteo</b> — viento y lluvia por estadio: ${ok(s.weather)}<br><br>
-    Ninguna requiere llave de API ni pago.
-  </div></details>
-
-  <details class="acc"><summary>Estado de esta corrida</summary><div>
-    Temporada ${m.season}, semana ${m.week}.<br>
-    Semanas jugadas: ${m.weeks_played} · confianza de datos: <b>${esc(m.data_confidence)}</b>.<br>
-    Generado: ${esc(m.generated_at)} · tiempo de cómputo ${m.runtime_sec}s.<br>
-    ${m.calibration?`Modelo calibrado con ${m.calibration.n} partidos; localía estimada en
-      ${num(m.calibration.hfa,2)} puntos.`:""}
-  </div></details>
-
-  <div class="note">Se actualiza solo cada <b>martes y viernes a las 7:00 am (CDMX)</b>
-  con GitHub Actions. La corrida del martes ya incluye el Monday Night Football;
-  la del viernes recoge las correcciones de estadística de la NFL y el reporte
-  final de lesiones.</div>`;
+  <div class="mini" style="text-align:center;margin-top:14px">Herramienta informativa con datos públicos. No es consejo financiero.</div>`;
 }
 
 /* ---------------- render ---------------- */
@@ -769,7 +995,7 @@ function renderView(){
   const v = {start:viewStart, waivers:viewWaivers, games:viewGames,
              def:viewDef, list:viewList, about:viewAbout}[S.view];
   $("#view").innerHTML = v();
-  bindStars(); bindList(); bindTips(); bindTable();
+  bindStars(); bindList(); bindTips(); bindTable(); animate();
 }
 function render(){
   const m = S.data.meta;

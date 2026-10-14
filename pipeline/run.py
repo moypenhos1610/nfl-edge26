@@ -14,7 +14,9 @@ import time
 import polars as pl
 
 from . import config as C
-from . import defense, games, ingest, matchup, players
+from datetime import datetime, timezone
+
+from . import defense, games, ingest, matchup, picks, players
 
 
 def _clean(o):
@@ -50,13 +52,21 @@ def injury_map(inj: pl.DataFrame, season: int, week: int,
     out: dict[str, dict] = {}
     if inj.height and "gsis_id" in inj.columns:
         d = inj.filter((pl.col("season") == season) & (pl.col("week") == week))
+        stale = False
         if d.height == 0:
-            d = inj.filter(pl.col("season") == season)
-            if d.height:
-                d = d.filter(pl.col("week") == d["week"].max())
+            # Martes/miércoles: el reporte de ESTA semana aún no sale. Antes se
+            # copiaba el de la semana pasada completo (prácticas incluidas), y eso
+            # castigaba a jugadores ya sanos. Ahora sólo se arrastra "Out":
+            # quien no jugó la semana pasada probablemente siga fuera.
+            d = inj.filter((pl.col("season") == season) & (pl.col("week") == week - 1))
+            stale = True
         for r in d.iter_rows(named=True):
             pid = r.get("gsis_id")
             if not pid:
+                continue
+            if stale:
+                if str(r.get("report_status") or "") == "Out":
+                    out[pid] = {"status": "Out", "practice": ""}
                 continue
             e = out.setdefault(pid, {"status": "", "practice": ""})
             if r.get("report_status"):
@@ -89,92 +99,226 @@ def _relevant(p: dict, blk: dict | None = None) -> bool:
             or (p.get("carry_share") or 0) >= 0.12)
 
 
-def build_track_record(season: int, sched: pl.DataFrame,
-                       pg: pl.DataFrame) -> dict:
-    """Historial REAL de aciertos, calificando lo que ya publicamos.
+LEDGER = "ledger.json"
 
-    No es una simulación: lee los JSON de semanas anteriores (las predicciones
-    tal como se publicaron ese martes) y las califica contra lo que pasó.
-    """
+
+def _load_ledger(season: int) -> dict:
+    path = os.path.join(C.DATA_DIR, LEDGER)
+    try:
+        with open(path, encoding="utf-8") as f:
+            led = json.load(f)
+        if led.get("season") == season:
+            led.setdefault("games", {})
+            led.setdefault("players", {})
+            return led
+    except (OSError, json.JSONDecodeError):
+        pass
+    return {"season": season, "games": {}, "players": {}}
+
+
+def _lock_entry(gm: dict, now: datetime, backfill: bool = False) -> dict:
+    sp = gm.get("spread_pick") or {}
+    ml = gm.get("ml_pick") or {}
+    return {
+        "week": gm.get("week"), "home": gm.get("home_team"), "away": gm.get("away_team"),
+        "kickoff": gm.get("kickoff_utc"), "locked_at": now.isoformat(timespec="minutes"),
+        "spread_line": gm.get("vegas_spread"),
+        "sp": ({"side": sp.get("side"), "line": sp.get("line"), "tier": sp.get("tier"),
+                "dog": sp.get("is_dog")} if sp else None),
+        "ml": ({"side": ml.get("side"), "prob": ml.get("prob"), "odds": ml.get("odds")}
+               if ml else None),
+        "p_home": gm.get("p_home"), "p_mkt": gm.get("p_market_home"),
+        "upset": bool(gm.get("upset")), "public": gm.get("public"),
+        "backfill": backfill,
+    }
+
+
+def update_ledger(season: int, week: int, preds: list[dict], unified: list[dict],
+                  sched: pl.DataFrame, fmt: str) -> dict:
+    """Congela cada pick ANTES del kickoff. Lo que se califica es lo que se vio
+    antes de que empezara el partido, aunque la corrida llegue tarde."""
+    led = _load_ledger(season)
+    now = datetime.now(timezone.utc)
+
+    def started(ko: str | None) -> bool:
+        if not ko:
+            return False
+        try:
+            return datetime.fromisoformat(ko) <= now
+        except ValueError:
+            return False
+
+    open_games = set()
+    for gm in preds:
+        gid = gm.get("game_id")
+        if not gid:
+            continue
+        if not started(gm.get("kickoff_utc")):
+            led["games"][gid] = _lock_entry(gm, now)
+            open_games.add(gid)
+
+    wk_players = led["players"].setdefault(str(week), {})
+    for u in unified:
+        if u.get("game_id") not in open_games:
+            continue
+        blk = u.get(fmt) or {}
+        if blk.get("light") and (u.get("games") or 0) >= 3 and _relevant(u, blk):
+            wk_players[u["pid"]] = [blk["light"], blk.get("fppg")]
+        else:
+            wk_players.pop(u["pid"], None)
+
+    # ---- reconstrucción de semanas sin registro (temporada ya empezada)
+    have = {e["week"] for e in led["games"].values()}
+    forms = picks.ats_forms(sched)
+    hist = picks.load_hist()
+    for w in range(1, week):
+        if w in have:
+            continue
+        snap = None
+        fp = os.path.join(C.DATA_DIR, f"week_{w}.json")
+        if os.path.exists(fp):
+            try:
+                with open(fp, encoding="utf-8") as f:
+                    snap = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                snap = None
+        pub_games = {g["game_id"]: g for g in (snap or {}).get("games", [])}
+        for g in sched.filter((pl.col("season") == season) & (pl.col("week") == w)
+                              & (pl.col("game_type") == "REG")).to_dicts():
+            pg = pub_games.get(g["game_id"], {})
+            p_home = pg.get("p_home")
+            if p_home is None:
+                ph, pa = picks.american_to_prob(g.get("home_moneyline")), picks.american_to_prob(g.get("away_moneyline"))
+                p_home = ph / (ph + pa) if ph and pa else 0.5
+            sp = picks.spread_pick(g, forms.get(g["game_id"]), w, hist)
+            gm = {"game_id": g["game_id"], "week": w, "home_team": g["home_team"],
+                  "away_team": g["away_team"],
+                  "kickoff_utc": (picks.kickoff_utc(g.get("gameday"), g.get("gametime")) or now).isoformat(),
+                  "vegas_spread": g.get("spread_line"), "spread_pick": sp,
+                  "ml_pick": picks.ml_pick(g, p_home, hist), "p_home": p_home,
+                  "p_market_home": pg.get("p_market_home"),
+                  "upset": picks.upset_alert(g, sp, p_home), "public": None}
+            led["games"][g["game_id"]] = _lock_entry(gm, now, backfill=True)
+        if snap and str(w) not in led["players"]:
+            sf = snap["meta"].get("default_format", fmt)
+            led["players"][str(w)] = {
+                p["pid"]: [(p.get(sf) or {}).get("light"), (p.get(sf) or {}).get("fppg")]
+                for p in snap.get("players", [])
+                if (p.get(sf) or {}).get("light") and (p.get("games") or 0) >= 3
+                and _relevant(p, p.get(sf) or {})}
+
+    with open(os.path.join(C.DATA_DIR, LEDGER), "w", encoding="utf-8") as f:
+        json.dump(_clean(led), f, ensure_ascii=False, separators=(",", ":"))
+    return led
+
+
+def graded_games(season: int, sched: pl.DataFrame, led: dict) -> dict:
+    """Resultado de cada pick ya jugado, para pintar ✓/✗ en semanas pasadas."""
+    out: dict[str, dict] = {}
+    for r in sched.filter((pl.col("season") == season)
+                          & pl.col("home_score").is_not_null()).iter_rows(named=True):
+        e = led.get("games", {}).get(r["game_id"])
+        if not e:
+            continue
+        diff = r["home_score"] - r["away_score"]
+        g = {"week": e["week"], "home": e["home"], "away": e["away"],
+             "hs": r["home_score"], "as": r["away_score"], "line": e.get("spread_line"),
+             "bf": e.get("backfill", False), "upset": e.get("upset", False)}
+        if e.get("sp") and e.get("spread_line") is not None:
+            cm = diff - float(e["spread_line"])
+            home_side = e["sp"]["side"] == e["home"]
+            g["sp"] = {"side": e["sp"]["side"], "line": e["sp"]["line"], "tier": e["sp"]["tier"],
+                       "res": "P" if cm == 0 else ("W" if (cm > 0) == home_side else "L")}
+        if e.get("ml"):
+            g["ml"] = {"side": e["ml"]["side"], "prob": e["ml"].get("prob"),
+                       "res": "P" if diff == 0 else ("W" if (e["ml"]["side"] == e["home"]) == (diff > 0) else "L")}
+        out[r["game_id"]] = g
+    return out
+
+
+def build_track_record(season: int, sched: pl.DataFrame, pg: pl.DataFrame,
+                       led: dict, fmt: str) -> dict:
+    """Califica el registro congelado contra lo que pasó. No es simulación."""
     res = {r["game_id"]: (r["home_score"], r["away_score"])
            for r in sched.filter((pl.col("season") == season)
                                  & pl.col("home_score").is_not_null())
            .iter_rows(named=True)}
+
+    def blank():
+        return {"w": 0, "l": 0, "p": 0}
+
+    sp_all, sp_pub = blank(), blank()
+    sp_tier: dict[str, dict] = {}
+    ml, mk, ups = blank(), blank(), {"n": 0, "cover": 0, "win": 0}
+    by_week: dict[int, dict] = {}
+
+    for gid, e in led.get("games", {}).items():
+        r = res.get(gid)
+        if not r:
+            continue
+        diff = r[0] - r[1]
+        wk = by_week.setdefault(e["week"], {"week": e["week"], "sp": blank(), "ml": blank(),
+                                            "strong": blank(), "backfill": e.get("backfill", False)})
+        if e.get("sp") and e.get("spread_line") is not None:
+            home_side = e["sp"]["side"] == e["home"]
+            cm = diff - float(e["spread_line"])
+            k = "p" if cm == 0 else ("w" if (cm > 0) == home_side else "l")
+            for bucket in (sp_all, wk["sp"], sp_tier.setdefault(e["sp"]["tier"], blank())):
+                bucket[k] += 1
+            if not e.get("backfill"):
+                sp_pub[k] += 1
+            if e["sp"]["tier"] in ("fuerte", "media"):
+                wk["strong"][k] += 1
+            if e.get("upset") and k != "p":
+                ups["n"] += 1
+                ups["cover"] += int(k == "w")
+                ups["win"] += int((diff > 0) == home_side and diff != 0)
+        if diff != 0 and e.get("ml"):
+            k = "w" if (e["ml"]["side"] == e["home"]) == (diff > 0) else "l"
+            ml[k] += 1
+            wk["ml"][k] += 1
+            if e.get("p_mkt") is not None:
+                mk["w" if (e["p_mkt"] > 0.5) == (diff > 0) else "l"] += 1
+
+    def pct(b):
+        n = b["w"] + b["l"]
+        return round(100 * b["w"] / n, 1) if n else None
+
+    # ---- fantasy por semáforo
     real_pts: dict[tuple[int, str], dict] = {}
     if pg is not None and pg.height:
         for r in pg.filter(pl.col("season") == season).to_dicts():
             real_pts[(int(r["week"]), r["pid"])] = r
-
-    g_tot = g_ok = v_tot = v_ok = ats_tot = ats_ok = 0
-    weeks: list[dict] = []
     lights: dict[str, dict] = {}
-
-    for fn in sorted(os.listdir(C.DATA_DIR)):
-        if not (fn.startswith("week_") and fn.endswith(".json")):
-            continue
-        try:
-            with open(os.path.join(C.DATA_DIR, fn), encoding="utf-8") as f:
-                snap = json.load(f)
-        except (json.JSONDecodeError, OSError):
-            continue
-        if snap.get("meta", {}).get("season") != season:
-            continue
-        wk = snap["meta"]["week"]
-        wg_ok = wg_tot = 0
-        for gm in snap.get("games", []):
-            a = res.get(gm.get("game_id"))
-            if not a or a[0] == a[1]:
+    for w, plist in led.get("players", {}).items():
+        for pid, (lg, base) in plist.items():
+            rp = real_pts.get((int(w), pid))
+            if not lg or rp is None:
                 continue
-            home_won = a[0] > a[1]
-            g_tot += 1
-            wg_tot += 1
-            if (gm.get("p_home") or 0) > 0.5 and home_won or \
-               (gm.get("p_home") or 0) <= 0.5 and not home_won:
-                g_ok += 1
-                wg_ok += 1
-            pm = gm.get("p_market_home")
-            if pm is not None:
-                v_tot += 1
-                if (pm > 0.5) == home_won:
-                    v_ok += 1
-            sp, rm = gm.get("vegas_spread"), gm.get("raw_margin")
-            if sp is not None and rm is not None and gm.get("ats_pick"):
-                ats_tot += 1
-                if (rm > sp) == ((a[0] - a[1]) > sp):
-                    ats_ok += 1
-        if wg_tot:
-            weeks.append({"week": wk, "n": wg_tot,
-                          "acc": round(100 * wg_ok / wg_tot, 1)})
-
-        fmt = snap["meta"].get("default_format", C.DEFAULT_FORMAT)
-        for p in snap.get("players", []):
-            blk = p.get(fmt) or {}
-            lg = blk.get("light")
-            rp = real_pts.get((wk, p.get("pid")))
-            if not lg or rp is None or (p.get("games") or 0) < 3:
-                continue
-            # sólo jugadores con rol real: calificar suplentes de 2 snaps
-            # llena el historial de ruido y no refleja ninguna decisión tuya
-            if not _relevant(p, blk):
-                continue
-            from . import players as _pl
-            actual = _pl.fantasy_points(rp, fmt)
-            base = blk.get("fppg") or 0.0
+            actual = players.fantasy_points(rp, fmt)
             e = lights.setdefault(lg, {"n": 0, "sum": 0.0})
             e["n"] += 1
-            e["sum"] += actual - base
+            e["sum"] += actual - (base or 0.0)
 
-    out = {"available": g_tot > 0, "games": {}, "fantasy": {}, "by_week": weeks}
-    if g_tot:
-        out["games"] = {
-            "n": g_tot, "acc": round(100 * g_ok / g_tot, 1),
-            "vegas_acc": (round(100 * v_ok / v_tot, 1) if v_tot else None),
-            "ats_n": ats_tot,
-            "ats_acc": (round(100 * ats_ok / ats_tot, 1) if ats_tot else None),
-        }
-    if lights:
-        out["fantasy"] = {k: {"n": v["n"], "vs_promedio": round(v["sum"] / v["n"], 2)}
-                          for k, v in lights.items() if v["n"]}
+    graded = ml["w"] + ml["l"]
+    out = {
+        "available": graded > 0,
+        "spread": {**sp_all, "pct": pct(sp_all)},
+        "spread_published": {**sp_pub, "pct": pct(sp_pub)},
+        "spread_tiers": {t: {**b, "pct": pct(b)} for t, b in sp_tier.items()},
+        "moneyline": {**ml, "pct": pct(ml)},
+        "market": {**mk, "pct": pct(mk)},
+        "upset": {**ups, "cover_pct": round(100 * ups["cover"] / ups["n"], 1) if ups["n"] else None},
+        "by_week": [{"week": v["week"], "backfill": v["backfill"],
+                     "sp": v["sp"], "sp_pct": pct(v["sp"]),
+                     "strong": v["strong"], "ml": v["ml"], "ml_pct": pct(v["ml"])}
+                    for _, v in sorted(by_week.items())],
+        "fantasy": {k: {"n": v["n"], "vs_promedio": round(v["sum"] / v["n"], 2)}
+                    for k, v in lights.items() if v["n"]},
+    }
+    # compatibilidad con el reporte semanal y la versión anterior de la página
+    out["games"] = {"n": graded, "acc": pct(ml), "vegas_acc": pct(mk),
+                    "ats_n": sp_all["w"] + sp_all["l"], "ats_acc": pct(sp_all)}
     return out
 
 
@@ -199,6 +343,7 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
     trending = ingest.load_sleeper_trending()
     espn_inj = ingest.load_espn_injury_news()
     weather = ingest.load_weather(week_games)
+    public = ingest.load_public_betting(week_games)
 
     # ---------------------------------------------------------- motores
     print("\n[motor] matriz defensiva ajustada por rival…")
@@ -225,7 +370,8 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
         print(f"  {fmt:<9} {per_fmt[fmt].height} jugador-matchups")
 
     print("[motor] modelo de partidos…")
-    preds, gmeta = games.predict_week(sched, gl, season, wk)
+    preds, gmeta = games.predict_week(sched, gl, season, wk, public=public,
+                                      weather=weather)
     print(f"  {len(preds)} predicciones · backtest {gmeta['backtest']}")
 
     # ------------------------------------------------- unificar por jugador
@@ -296,12 +442,16 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
 
     print("[motor] historial real de aciertos…")
     pg_all = players.player_game_usage(ev) if ev is not None and ev.height else pl.DataFrame()
-    track = build_track_record(season, sched, pg_all)
+    led = update_ledger(season, wk, preds, unified, sched, base_fmt)
+    track = build_track_record(season, sched, pg_all, led, base_fmt)
     if track.get("available"):
         print(f"  {track['games']['n']} partidos calificados · "
-              f"modelo {track['games']['acc']}% · Vegas {track['games']['vegas_acc']}%")
+              f"moneyline {track['moneyline']['pct']}% · Vegas {track['market']['pct']}% · "
+              f"spread {track['spread']['w']}-{track['spread']['l']}-{track['spread']['p']}")
     else:
         print("  aún sin semanas anteriores que calificar")
+
+    graded = graded_games(season, sched, led)
 
     payload = {
         "meta": {
@@ -316,8 +466,12 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
                 "nflverse": True,
                 "sleeper_trending": bool(trending.get("_available")),
                 "espn_injuries": bool(espn_inj),
-                "weather": len(weather) > 0,
+                "weather": any(not v.get("dome") for v in weather.values()),
+                "public_betting": bool(public.get("_available")),
+                "public_diag": public.get("_diag", ""),
             },
+            "picks_hist": picks.load_hist(),
+            "season_pattern": _clean(picks.season_pattern(sched, season, wk)),
             "backtest": gmeta["backtest"],
             "track_record": _clean(track),
             "market_rules": {
@@ -335,6 +489,7 @@ def run(season: int = C.SEASON, week: int | None = None) -> dict:
         "defense": _clean(matrix.to_dicts()),
         "metric_labels": defense.METRIC_LABELS,
         "changes": _clean(changes[:40]),
+        "graded": _clean(graded),
     }
 
     out = os.path.join(C.DATA_DIR, f"week_{wk}.json")

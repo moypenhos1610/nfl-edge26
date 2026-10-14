@@ -126,6 +126,9 @@ CONSENSUS_REQUIRED = 2      # señales propias que deben coincidir para discrepa
 # aviso de "aquí el modelo y el mercado no se entienden, y el mercado suele
 # tener razón".
 SHOW_ATS_PICK = False
+# (Oct-2026) Los picks de spread ya NO salen de esta discrepancia del modelo:
+# salen de pipeline/picks.py (regresión ATS), validada en 2006-2015 y 2016-2025
+# por separado. Ver tests/validar_picks.py.
 
 # ------------------------------------------------------------------- rutas
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

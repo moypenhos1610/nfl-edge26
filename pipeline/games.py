@@ -17,6 +17,7 @@ import numpy as np
 import polars as pl
 
 from . import config as C
+from . import picks
 
 HFA_PRIOR = 1.7          # puntos de localía (se re-estima con datos)
 ELO_K = 20.0
@@ -252,7 +253,8 @@ def _records(sched: pl.DataFrame, season: int, week: int) -> dict[str, dict]:
 
 
 def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
-                 week: int) -> tuple[list[dict], dict]:
+                 week: int, public: dict | None = None,
+                 weather: dict | None = None) -> tuple[list[dict], dict]:
     """Predicciones de la semana con favorito, confianza y edge contra Vegas."""
     if sched is None or sched.height == 0 or "season" not in sched.columns:
         return [], {"calibration": calibrate(pl.DataFrame()),
@@ -262,6 +264,13 @@ def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
     bt = backtest(hist, sched) if hist.height else {"available": False}
     epa = epa_ratings(game_level, season)
     rec = _records(sched, season, week)
+    # ranking de calidad real (EPA neta ajustada por rival): 1 = mejor
+    net = sorted(epa, key=lambda t: -(epa[t]["off"] - epa[t]["def"]))
+    epa_rank = {t: i + 1 for i, t in enumerate(net)}
+    forms = picks.ats_forms(sched)
+    hist = picks.load_hist()
+    public = public or {}
+    weather = weather or {}
 
     games = sched.filter((pl.col("season") == season) & (pl.col("week") == week))
     out: list[dict] = []
@@ -280,10 +289,10 @@ def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
         if g.get("home_rest") is not None and g.get("away_rest") is not None:
             rest_adj = np.clip((float(g["home_rest"]) - float(g["away_rest"])) * 0.10, -1.2, 1.2)
 
-        blend = 0.68 if epa else 1.0
-        margin = blend * elo_margin + (1 - blend) * (elo_margin + epa_margin) / 2 + rest_adj
         if epa:
             margin = 0.62 * elo_margin + 0.38 * (epa_margin + cal["hfa"]) + rest_adj
+        else:
+            margin = elo_margin + rest_adj
 
         # ---------------------------------------------- ANCLAJE AL MERCADO
         # 15 combinaciones probadas contra la temporada 2025: ninguna le gana a
@@ -341,7 +350,7 @@ def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
         rh = rec.get(h, {"w": 0, "l": 0, "t": 0})
         ra = rec.get(a, {"w": 0, "l": 0, "t": 0})
 
-        out.append({
+        rec_out = {
             "game_id": g.get("game_id"), "week": week, "gameday": g.get("gameday"),
             "gametime": g.get("gametime"),
             "home_team": h, "away_team": a,
@@ -365,7 +374,24 @@ def predict_week(sched: pl.DataFrame, game_level: pl.DataFrame, season: int,
             "epa_off_away": round(epa_a["off"], 4), "epa_def_away": round(epa_a["def"], 4),
             "explanation": _explain(h, a, fav, pfav, raw_margin, g.get("spread_line"),
                                     rh, ra, eh, ea, edge, stance, signals, ats_pick),
+        }
+        # ------------------------------------------------ picks (validados)
+        form = forms.get(g.get("game_id"))
+        pub = public.get(g.get("game_id"))
+        sp_pick = picks.spread_pick(g, form, week, hist)
+        ko = picks.kickoff_utc(g.get("gameday"), g.get("gametime"))
+        rec_out.update({
+            "kickoff_utc": ko.isoformat() if ko else None,
+            "home_ml": g.get("home_moneyline"), "away_ml": g.get("away_moneyline"),
+            "spread_pick": sp_pick,
+            "ml_pick": picks.ml_pick(g, p_home, hist),
+            "upset": picks.upset_alert(g, sp_pick, p_home),
+            "public": pub,
+            "sees": picks.model_sees(g, rec_out, form, epa_rank, pub,
+                                     weather.get(g.get("game_id"))),
+            "epa_rank_home": epa_rank.get(h), "epa_rank_away": epa_rank.get(a),
         })
+        out.append(rec_out)
     return out, {"calibration": cal, "backtest": bt}
 
 

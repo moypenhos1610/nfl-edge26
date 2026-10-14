@@ -214,6 +214,9 @@ def load_weather(games: list[dict]) -> dict[str, dict]:
         if dome:
             out[gid] = {"dome": True, "wind_mph": 0.0, "precip_mm": 0.0, "temp_f": 70.0}
             continue
+        if (g.get("roof") or "") in ("dome", "closed"):
+            out[gid] = {"dome": True, "wind_mph": 0.0, "precip_mm": 0.0, "temp_f": 70.0}
+            continue
         url = (f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
                f"&daily=wind_speed_10m_max,precipitation_sum,temperature_2m_max"
                f"&temperature_unit=fahrenheit&wind_speed_unit=mph"
@@ -234,6 +237,139 @@ def load_weather(games: list[dict]) -> dict[str, dict]:
         time.sleep(0.12)  # cortesía con la API pública
     print(f"[clima] {ok} partidos al aire libre con pronóstico")
     return out
+
+
+# ------------------------------------------------- % de apuestas del público
+# Action Network publica el "consenso" (book 15): % de boletos y % de dinero
+# por lado. No hay llave ni pago. El formato no está documentado, así que el
+# parser busca los campos por patrón y reporta lo que vio (para diagnosticar).
+_AN_ABBR = {"LAR": "LA", "WSH": "WAS", "JAC": "JAX", "LVR": "LV", "OAK": "LV",
+            "ARZ": "ARI", "GNB": "GB", "KAN": "KC", "NWE": "NE", "NOR": "NO",
+            "SFO": "SF", "TAM": "TB", "SD": "LAC", "STL": "LA"}
+_BROWSER_UA = {"User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) "
+                              "Chrome/126.0 Safari/537.36"),
+               "Accept": "application/json"}
+
+
+def _http_json_browser(url: str, timeout: int = 20) -> Any | None:
+    for attempt in range(2):
+        try:
+            req = urllib.request.Request(url, headers=_BROWSER_UA)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
+                json.JSONDecodeError, OSError):
+            time.sleep(1.5)
+    return None
+
+
+def _pct(v) -> float | None:
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return None
+    if v != v or v < 0:
+        return None
+    return round(v * 100, 1) if v <= 1.0 and v != 0 else round(v, 1)
+
+
+def parse_public_game(game: dict) -> dict:
+    """Extrae % del público de un juego de Action Network (v1 o v2)."""
+    out: dict[str, float | None] = {}
+    # ---- v1: odds = [ {book_id, spread_home_public, ml_home_money, ...}, ... ]
+    odds = game.get("odds")
+    if isinstance(odds, list):
+        cands = [o for o in odds if isinstance(o, dict)
+                 and any(k.endswith("_public") and o.get(k) is not None for k in o)]
+        cands.sort(key=lambda o: 0 if o.get("book_id") == 15 else 1)
+        if cands:
+            o = cands[0]
+            for k_out, k_in in (("spread_home", "spread_home_public"),
+                                ("spread_away", "spread_away_public"),
+                                ("ml_home", "ml_home_public"), ("ml_away", "ml_away_public"),
+                                ("over", "total_over_public"), ("under", "total_under_public"),
+                                ("spread_home_money", "spread_home_money"),
+                                ("ml_home_money", "ml_home_money"),
+                                ("over_money", "total_over_money")):
+                if o.get(k_in) is not None:
+                    out[k_out] = _pct(o[k_in])
+            if o.get("num_bets") is not None:
+                out["num_bets"] = o.get("num_bets")
+    # ---- v2: markets -> {book} -> event -> spread/moneyline/total -> [ {side, bet_info} ]
+    if not out:
+        def walk(node, market=None):
+            if isinstance(node, dict):
+                side = node.get("side")
+                bi = node.get("bet_info")
+                if market and side in ("home", "away", "over", "under") and isinstance(bi, dict):
+                    t = (bi.get("tickets") or {}).get("percent")
+                    m = (bi.get("money") or {}).get("percent")
+                    key = {"spread": "spread_", "moneyline": "ml_", "total": ""}.get(market)
+                    if key is not None:
+                        if t is not None and f"{key}{side}" not in out:
+                            out[f"{key}{side}"] = _pct(t)
+                        if m is not None and side in ("home", "over") and f"{key}{side}_money" not in out:
+                            out[f"{key}{side}_money"] = _pct(m)
+                for k, v in node.items():
+                    walk(v, k if k in ("spread", "moneyline", "total") else market)
+            elif isinstance(node, list):
+                for v in node:
+                    walk(v, market)
+        walk(game.get("markets") or {})
+    # completa el lado contrario si sólo vino uno
+    for a, b in (("spread_home", "spread_away"), ("ml_home", "ml_away"), ("over", "under")):
+        if out.get(a) is not None and out.get(b) is None:
+            out[b] = round(100 - out[a], 1)
+        if out.get(b) is not None and out.get(a) is None:
+            out[a] = round(100 - out[b], 1)
+    return {k: v for k, v in out.items() if v is not None}
+
+
+def _an_teams(game: dict) -> tuple[str | None, str | None]:
+    teams = {t.get("id"): t for t in (game.get("teams") or []) if isinstance(t, dict)}
+    def ab(tid):
+        t = teams.get(tid) or {}
+        a = (t.get("abbr") or t.get("abbreviation") or "").upper()
+        return _AN_ABBR.get(a, a) or None
+    return ab(game.get("home_team_id")), ab(game.get("away_team_id"))
+
+
+def load_public_betting(games: list[dict]) -> dict:
+    """game_id -> {spread_home, spread_away, ml_home, ml_away, over, under, ...} en %."""
+    res: dict = {"_available": False, "_diag": ""}
+    days = sorted({str(g.get("gameday"))[:10].replace("-", "") for g in games if g.get("gameday")})
+    if not days:
+        return res
+    by_pair = {(g.get("home_team"), g.get("away_team")): g.get("game_id") for g in games}
+    seen_keys: set[str] = set()
+    n_raw = 0
+    for day in days:
+        data = None
+        for url in (f"https://api.actionnetwork.com/web/v1/scoreboard/nfl?period=game&bookIds=15,30&date={day}",
+                    f"https://api.actionnetwork.com/web/v2/scoreboard/nfl?bookIds=15,30&periods=event&date={day}"):
+            data = _http_json_browser(url)
+            if isinstance(data, dict) and data.get("games"):
+                break
+        if not isinstance(data, dict):
+            continue
+        for gm in data.get("games") or []:
+            n_raw += 1
+            hab, aab = _an_teams(gm)
+            gid = by_pair.get((hab, aab))
+            if not gid:
+                continue
+            if isinstance(gm.get("odds"), list) and gm["odds"]:
+                seen_keys |= {k for k in gm["odds"][0] if "public" in k or "money" in k}
+            pub = parse_public_game(gm)
+            if pub:
+                res[gid] = pub
+        time.sleep(0.3)
+    n = len([k for k in res if not k.startswith("_")])
+    res["_available"] = n > 0
+    res["_diag"] = f"juegos recibidos {n_raw}, con % del público {n}; campos: {sorted(seen_keys)[:12]}"
+    print(f"[público] {'OK' if n else 'NO DISPONIBLE'} — {res['_diag']}")
+    return res
 
 
 # ------------------------------------------------------------------- bundle
